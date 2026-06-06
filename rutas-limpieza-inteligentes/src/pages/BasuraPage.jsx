@@ -7,6 +7,7 @@ import { START_DISPLAY } from '../data/mockReports'
 import { generateSmartRoute } from '../utils/routeOptimizer'
 import { fetchRouteFromOSRM, simulateRoadRoute } from '../utils/osrmRouter'
 import { analyzeImage } from '../services/aiAnalyzer'
+import BboxOverlay from '../components/BboxOverlay'
 import { Truck, X, Brain, Image as ImageIcon } from 'lucide-react'
 
 export default function BasuraPage() {
@@ -87,26 +88,43 @@ export default function BasuraPage() {
       return next
     })
     setSelectedReport(report)
-    setAnalysisResult(report.nivel !== 'Pendiente' ? report : null)
+    if (report.nivel !== 'Pendiente' && report.objetos) {
+      setAnalysisResult(report)
+    } else {
+      setAnalysisResult(null)
+    }
   }, [])
+
+  const [processingError, setProcessingError] = useState(null)
 
   const handleProcessImage = async () => {
     if (!selectedReport?.imagen_b64) return
     setAnalyzing(true)
     setAnalysisResult(null)
+    setProcessingError(null)
+    log('iniciando procesamiento con IA')
 
-    const blob = await (await fetch(selectedReport.imagen_b64)).blob()
-    const file = new File([blob], 'report.jpg', { type: 'image/jpeg' })
+    try {
+      const blob = await (await fetch(selectedReport.imagen_b64)).blob()
+      const file = new File([blob], 'report.jpg', { type: 'image/jpeg' })
+      log('imagen convertida a File', { size: file.size })
 
-    const result = await analyzeImage(file, null)
-    setAnalysisResult(result)
-    updateReport(selectedReport.id, {
+      const result = await analyzeImage(file, null)
+      log('resultado del analisis', { metodo: result.metodo, nivel: result.nivel, objetos: result.objetos?.length, es_real: result.es_real })
+      setAnalysisResult(result)
+      updateReport(selectedReport.id, {
       nivel: result.nivel,
       confianza: result.confianza,
       prioridad: result.prioridad,
-      objetos: result.objetos,
+      objetos: result.objetos || [],
+      colores_clases: result.colores_clases || {},
+      imagen_anotada_b64: result.imagen_anotada_b64 || null,
       metodo: result.metodo,
     })
+    } catch (e) {
+      log('error en procesamiento:', e.message)
+      setProcessingError(e.message)
+    }
     setAnalyzing(false)
   }
 
@@ -186,10 +204,13 @@ export default function BasuraPage() {
                   borderRadius: 10, overflow: 'hidden', marginBottom: 12,
                   border: '1px solid var(--border-color)',
                 }}>
-                  <img
-                    src={selectedReport.imagen_b64}
-                    alt="reporte"
-                    style={{ width: '100%', display: 'block' }}
+                  <BboxOverlay
+                    objetos={analysisResult?.objetos || []}
+                    coloresClases={analysisResult?.colores_clases || {}}
+                    imagenB64={analysisResult?.imagen_anotada_b64 || null}
+                    imageUrl={selectedReport.imagen_b64}
+                    filterConf={0}
+                    hiddenClasses={new Set()}
                   />
                 </div>
               ) : (
@@ -253,6 +274,17 @@ export default function BasuraPage() {
                 </button>
               )}
 
+              {processingError && (
+                <div style={{
+                  marginTop: 12, padding: 12, borderRadius: 10,
+                  background: 'var(--severity-critico-bg)',
+                  border: '1px solid var(--severity-critico-border)',
+                  color: 'var(--severity-critico-text)', fontSize: 13,
+                }}>
+                  <strong>Error:</strong> {processingError}
+                </div>
+              )}
+
               {analysisResult && (
                 <div style={{
                   marginTop: 12, padding: 12, borderRadius: 10,
@@ -270,8 +302,15 @@ export default function BasuraPage() {
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
                     {analysisResult.resumen}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    Confianza: {analysisResult.confianza} · {analysisResult.metodo}
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    Confianza: {analysisResult.confianza}
+                    <span style={{
+                      padding: '1px 6px', borderRadius: 6, fontSize: 10, fontWeight: 600,
+                      background: analysisResult.es_real ? 'var(--badge-osrm-bg)' : 'var(--badge-sim-bg)',
+                      color: analysisResult.es_real ? 'var(--badge-osrm-text)' : 'var(--badge-sim-text)',
+                    }}>
+                      {analysisResult.metodo}
+                    </span>
                   </div>
                   {analysisResult.objetos?.length > 0 && (
                     <div style={{ marginTop: 8 }}>
