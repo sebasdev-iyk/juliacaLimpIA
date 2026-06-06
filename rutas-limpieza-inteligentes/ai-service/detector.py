@@ -11,14 +11,7 @@ from io import BytesIO
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# -------------------------------------------------------------------
-# Configuración
-# -------------------------------------------------------------------
-# Clases que detectamos (YOLO-World entiende lenguaje natural)
-# Incluye inglés y español porque YOLO-World funciona mejor con inglés
-# IMPORTANTE: las clases genéricas al inicio capturan CUALQUIER basura
 CLASSES = [
-    # === CATCH-ALL: detecta cualquier cosa que parezca basura ===
     "trash",
     "garbage",
     "litter",
@@ -33,7 +26,6 @@ CLASSES = [
     "basura en la calle",
     "residuos",
     "desperdicios",
-    # Contenedores
     "waste container",
     "dumpster",
     "trash can",
@@ -41,12 +33,10 @@ CLASSES = [
     "recycling bin",
     "large garbage container",
     "contenedor de basura",
-    # Desbordado / lleno
     "overflowing dumpster",
     "overflowing trash can",
     "full garbage container",
     "overfilled dumpster",
-    # Bolsas y acumulación
     "trash bags",
     "garbage bags",
     "garbage pile",
@@ -54,7 +44,6 @@ CLASSES = [
     "trash on ground",
     "garbage on ground",
     "bolsas de basura",
-    # Desechos grandes
     "construction debris",
     "bulky waste",
     "household waste pile",

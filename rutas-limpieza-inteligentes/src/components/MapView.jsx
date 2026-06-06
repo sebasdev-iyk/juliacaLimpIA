@@ -2,7 +2,6 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import L from 'leaflet'
 import { PUNO_CENTER, START_DISPLAY } from '../data/mockReports'
 
-// Iconos personalizados por nivel
 function createIcon(color, size) {
   return L.divIcon({
     html: `<div style="
@@ -23,9 +22,9 @@ const ICONS = {
   Crítico: createIcon('var(--severity-critico-badge)', 22),
   Medio: createIcon('var(--severity-medio-badge)', 18),
   Bajo: createIcon('var(--severity-bajo-badge)', 14),
+  Pendiente: createIcon('var(--text-muted)', 14),
 }
 
-// Marcador del punto de inicio
 const START_ICON = L.divIcon({
   html: `<div style="
     width:28px;height:28px;
@@ -42,7 +41,6 @@ const START_ICON = L.divIcon({
 })
 
 export default function MapView({ reports, route, routeGeometry, onToggleReport, selectedIds, mapKey }) {
-  // Usar geometría de OSRM (calles reales) si está disponible
   const hasGeometry = routeGeometry && routeGeometry.length > 1
   const polylinePositions = hasGeometry
     ? routeGeometry
@@ -64,17 +62,15 @@ export default function MapView({ reports, route, routeGeometry, onToggleReport,
           attribution='&copy; OpenStreetMap'
         />
 
-        {/* Punto de inicio (Municipalidad) */}
         <Marker position={[START_DISPLAY.lat, START_DISPLAY.lng]} icon={START_ICON}>
           <Popup>
             <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
-              <strong>🚛 Municipalidad de Juliaca</strong>
-              <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>Punto de inicio de ruta — JulIAca LimpIA</div>
+              <strong>🚛 Punto de inicio</strong>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>Municipalidad de Juliaca</div>
             </div>
           </Popup>
         </Marker>
 
-        {/* Línea de ruta */}
         {polylinePositions.length > 1 && (
           <Polyline
             positions={polylinePositions}
@@ -85,7 +81,6 @@ export default function MapView({ reports, route, routeGeometry, onToggleReport,
           />
         )}
 
-        {/* Marcadores de reportes */}
         {reports.map(r => {
           const isSelected = selectedIds?.has(r.id)
           const icon = isSelected
@@ -103,7 +98,7 @@ export default function MapView({ reports, route, routeGeometry, onToggleReport,
                 iconSize: [24, 24],
                 iconAnchor: [12, 12],
               })
-            : (ICONS[r.nivel] || ICONS.Bajo)
+            : (ICONS[r.nivel] || ICONS.Pendiente)
 
           return (
             <Marker
@@ -116,19 +111,23 @@ export default function MapView({ reports, route, routeGeometry, onToggleReport,
             >
               <Popup>
                 <div style={{ minWidth: 180, fontFamily: 'Inter, sans-serif' }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>{r.zona}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>{r.descripcion}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>{r.descripcion}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>
+                    {r.latitud.toFixed(4)}, {r.longitud.toFixed(4)}
+                  </div>
                   <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
                     <span style={{
                       padding: '2px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,
-                      background: r.nivel === 'Crítico' ? 'var(--severity-critico-bg)' : r.nivel === 'Medio' ? 'var(--severity-medio-bg)' : 'var(--severity-bajo-bg)',
-                      color: r.nivel === 'Crítico' ? 'var(--severity-critico-text)' : r.nivel === 'Medio' ? 'var(--severity-medio-text)' : 'var(--severity-bajo-text)',
+                      background: r.nivel === 'Crítico' ? 'var(--severity-critico-bg)' : r.nivel === 'Medio' ? 'var(--severity-medio-bg)' : r.nivel === 'Bajo' ? 'var(--severity-bajo-bg)' : 'var(--bg-active)',
+                      color: r.nivel === 'Crítico' ? 'var(--severity-critico-text)' : r.nivel === 'Medio' ? 'var(--severity-medio-text)' : r.nivel === 'Bajo' ? 'var(--severity-bajo-text)' : 'var(--text-muted)',
                     }}>
                       {r.nivel}
                     </span>
-                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                      🎯 {r.confianza}
-                    </span>
+                    {r.confianza !== '—' && (
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        🎯 {r.confianza}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                     {r.estado} · {r.fecha}
@@ -140,12 +139,12 @@ export default function MapView({ reports, route, routeGeometry, onToggleReport,
         })}
       </MapContainer>
 
-      {/* Leyenda */}
       <div className="map-legend">
         {[
           { color: 'var(--severity-critico-badge)', label: 'Crítico' },
           { color: 'var(--severity-medio-badge)', label: 'Medio' },
           { color: 'var(--severity-bajo-badge)', label: 'Bajo' },
+          { color: 'var(--text-muted)', label: 'Pendiente' },
           { color: 'var(--color-secondary)', label: 'Inicio' },
         ].map(item => (
           <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
