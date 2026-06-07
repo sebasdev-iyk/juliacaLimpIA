@@ -15,6 +15,30 @@ export default function CameraPage() {
 
   const capture = () => {
     setFlash(true)
+    const c = document.createElement('canvas')
+    c.width = 640; c.height = 480
+    const ctx = c.getContext('2d')
+    const grad = ctx.createRadialGradient(320, 240, 50, 320, 240, 400)
+    grad.addColorStop(0, '#065f46')
+    grad.addColorStop(0.5, '#047857')
+    grad.addColorStop(1, '#064e3b')
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, 640, 480)
+    ctx.fillStyle = 'rgba(255,255,255,0.08)'
+    for (let i = 0; i < 60; i++) {
+      ctx.beginPath()
+      ctx.arc(Math.random() * 640, Math.random() * 480, Math.random() * 3 + 1, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'
+    ctx.fillRect(0, 380, 640, 100)
+    ctx.fillStyle = 'white'
+    ctx.font = 'bold 18px sans-serif'
+    ctx.fillText('Juliaca · ' + new Date().toLocaleDateString('es-PE'), 30, 420)
+    ctx.font = '14px sans-serif'
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'
+    ctx.fillText('Reporte ciudadano', 30, 448)
+    const foto = c.toDataURL('image/jpeg', 0.85)
+    sessionStorage.setItem('current_foto', foto)
     setTimeout(() => {
       setFlash(false)
       navigate('/ciudadano/preview')

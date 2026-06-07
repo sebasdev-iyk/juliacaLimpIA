@@ -62,8 +62,12 @@ export default function ReportsPage() {
                     </div>
                     <div className={`bg-white/80 backdrop-blur-sm border border-gray-200/80 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 ${isResolved ? 'opacity-70' : ''}`}>
                       <div className="flex">
-                        <div className={`w-20 h-20 shrink-0 bg-gradient-to-br ${isResolved ? 'from-gray-100 to-gray-50' : 'from-emerald-50 to-teal-50'} flex items-center justify-center`}>
-                          <span className="material-symbols-outlined text-2xl text-gray-300">photo</span>
+                        <div className={`w-20 h-20 shrink-0 ${report.foto ? '' : 'bg-gradient-to-br from-emerald-50 to-teal-50 flex items-center justify-center'}`}>
+                          {report.foto ? (
+                            <img src={report.foto} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="material-symbols-outlined text-2xl text-gray-300">photo</span>
+                          )}
                         </div>
                         <div className="p-3 flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
