@@ -8,7 +8,8 @@ import { generateSmartRoute } from '../utils/routeOptimizer'
 import { fetchRouteFromOSRM, simulateRoadRoute } from '../utils/osrmRouter'
 import { analyzeImage } from '../services/aiAnalyzer'
 import BboxOverlay from '../components/BboxOverlay'
-import { Truck, X, Brain, Image as ImageIcon } from 'lucide-react'
+import ReportList from '../components/ReportList'
+import { Truck, X, Brain, Image as ImageIcon, Sparkles, List, Map as MapIcon } from 'lucide-react'
 
 export default function BasuraPage() {
   const { reports, updateReport } = useReports()
@@ -25,6 +26,9 @@ export default function BasuraPage() {
   const [selectedReport, setSelectedReport] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState(null)
+  const [analyzingAll, setAnalyzingAll] = useState(false)
+  const [analyzeProgress, setAnalyzeProgress] = useState({ current: 0, total: 0 })
+  const [showList, setShowList] = useState(false)
 
   const stats = {
     total: reports.length,
@@ -97,30 +101,62 @@ export default function BasuraPage() {
 
   const [processingError, setProcessingError] = useState(null)
 
-  const handleProcessImage = async () => {
-    if (!selectedReport?.imagen_b64) return
+  const pendingWithImages = reports.filter(r => r.nivel === 'Pendiente' && r.imagen_b64)
+
+  const handleAnalyzeAll = async () => {
+    const pending = reports.filter(r => r.nivel === 'Pendiente' && r.imagen_b64)
+    if (pending.length === 0) return
+    setAnalyzingAll(true)
+    setAnalyzeProgress({ current: 0, total: pending.length })
+    log('iniciando análisis masivo', { cantidad: pending.length })
+    for (const report of pending) {
+      try {
+        const blob = await (await fetch(report.imagen_b64)).blob()
+        const file = new File([blob], 'report.jpg', { type: 'image/jpeg' })
+        const result = await analyzeImage(file, null)
+        updateReport(report.id, {
+          nivel: result.nivel,
+          confianza: result.confianza,
+          prioridad: result.prioridad,
+          objetos: result.objetos || [],
+          colores_clases: result.colores_clases || {},
+          imagen_anotada_b64: result.imagen_anotada_b64 || null,
+          metodo: result.metodo,
+        })
+      } catch (e) {
+        log('error analizando reporte', { id: report.id, error: e.message })
+      }
+      setAnalyzeProgress(prev => ({ ...prev, current: prev.current + 1 }))
+    }
+    setAnalyzingAll(false)
+    setMapKey(prev => prev + 1)
+  }
+
+  const handleProcessImage = async (report) => {
+    const target = report || selectedReport
+    if (!target?.imagen_b64) return
     setAnalyzing(true)
     setAnalysisResult(null)
     setProcessingError(null)
     log('iniciando procesamiento con IA')
 
     try {
-      const blob = await (await fetch(selectedReport.imagen_b64)).blob()
+      const blob = await (await fetch(target.imagen_b64)).blob()
       const file = new File([blob], 'report.jpg', { type: 'image/jpeg' })
       log('imagen convertida a File', { size: file.size })
 
       const result = await analyzeImage(file, null)
       log('resultado del analisis', { metodo: result.metodo, nivel: result.nivel, objetos: result.objetos?.length, es_real: result.es_real })
       setAnalysisResult(result)
-      updateReport(selectedReport.id, {
-      nivel: result.nivel,
-      confianza: result.confianza,
-      prioridad: result.prioridad,
-      objetos: result.objetos || [],
-      colores_clases: result.colores_clases || {},
-      imagen_anotada_b64: result.imagen_anotada_b64 || null,
-      metodo: result.metodo,
-    })
+      updateReport(target.id, {
+        nivel: result.nivel,
+        confianza: result.confianza,
+        prioridad: result.prioridad,
+        objetos: result.objetos || [],
+        colores_clases: result.colores_clases || {},
+        imagen_anotada_b64: result.imagen_anotada_b64 || null,
+        metodo: result.metodo,
+      })
     } catch (e) {
       log('error en procesamiento:', e.message)
       setProcessingError(e.message)
@@ -144,16 +180,25 @@ export default function BasuraPage() {
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         <div style={{ flex: 1, position: 'relative' }}>
-          <div style={{ position: 'absolute', inset: 0 }}>
-            <MapView
+          {showList ? (
+            <ReportList
               reports={reports}
-              route={route?.orderedPoints || null}
-              routeGeometry={routeGeometry}
-              onToggleReport={handleToggleReport}
-              selectedIds={selectedIds}
-              mapKey={mapKey}
+              onSelectReport={handleToggleReport}
+              onProcessReport={r => { setSelectedReport(r); setAnalysisResult(null); handleProcessImage(r) }}
+              processing={analyzing}
             />
-          </div>
+          ) : (
+            <div style={{ position: 'absolute', inset: 0 }}>
+              <MapView
+                reports={reports}
+                route={route?.orderedPoints || null}
+                routeGeometry={routeGeometry}
+                onToggleReport={handleToggleReport}
+                selectedIds={selectedIds}
+                mapKey={mapKey}
+              />
+            </div>
+          )}
 
           <div className={`route-info-card ${route ? 'route-visible' : ''}`} style={{ position: 'absolute', zIndex: 500 }}>
             {route && (
@@ -250,7 +295,7 @@ export default function BasuraPage() {
 
               {selectedReport.nivel === 'Pendiente' && selectedReport.imagen_b64 && (
                 <button
-                  onClick={handleProcessImage}
+                  onClick={() => handleProcessImage(selectedReport)}
                   disabled={analyzing}
                   style={{
                     width: '100%', height: 44, borderRadius: 10, border: 'none',
@@ -337,14 +382,41 @@ export default function BasuraPage() {
       </div>
 
       <div className="bottom-bar">
-        <button
-          className="bottom-bar-btn btn-secondary"
-          onClick={handleGenerateRoute}
-          disabled={reports.length === 0 || loadingRoute}
-        >
-          <Truck size={20} />
-          <span>Generar Ruta</span>
-        </button>
+        {analyzingAll ? (
+          <div className="bottom-bar-btn" style={{
+            background: 'var(--color-primary)', color: 'white', border: 'none',
+            cursor: 'default', justifyContent: 'center', gap: 8,
+          }}>
+            <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+            <span>Analizando... {analyzeProgress.current}/{analyzeProgress.total}</span>
+          </div>
+        ) : (
+          <>
+            <button
+              className="bottom-bar-btn btn-secondary"
+              onClick={() => setShowList(s => !s)}
+            >
+              {showList ? <MapIcon size={20} /> : <List size={20} />}
+              <span>{showList ? 'Mapa' : 'Lista'}</span>
+            </button>
+            <button
+              className="bottom-bar-btn btn-primary"
+              onClick={handleAnalyzeAll}
+              disabled={pendingWithImages.length === 0 || analyzingAll}
+            >
+              <Sparkles size={20} />
+              <span>Analizar todas</span>
+            </button>
+            <button
+              className="bottom-bar-btn btn-secondary"
+              onClick={handleGenerateRoute}
+              disabled={reports.length === 0 || loadingRoute}
+            >
+              <Truck size={20} />
+              <span>Ruta</span>
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

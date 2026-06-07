@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import { INITIAL_REPORTS } from '../data/mockReports'
 
 const STORAGE_KEY = 'juliaca_reports'
 const ReportsContext = createContext(null)
@@ -8,13 +9,16 @@ const log = (msg, data) => console.log(`[${new Date().toLocaleTimeString()}] Rep
 function loadReports() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    log('cargados del localStorage', { cantidad: parsed.length })
-    return parsed
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      log('cargados del localStorage', { cantidad: parsed.length })
+      return parsed
+    }
   } catch (e) {
     log('error al cargar del localStorage', e)
-    return []
   }
+  log('sembrando datos iniciales', { cantidad: INITIAL_REPORTS.length })
+  return INITIAL_REPORTS
 }
 
 export function ReportsProvider({ children }) {

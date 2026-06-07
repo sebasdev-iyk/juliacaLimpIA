@@ -3,26 +3,27 @@ import L from 'leaflet'
 import { PUNO_CENTER, START_DISPLAY } from '../data/mockReports'
 
 function createIcon(color, size) {
+  const px = Math.max(size, 18)
   return L.divIcon({
     html: `<div style="
-      width:${size}px;height:${size}px;
+      width:${px}px;height:${px}px;
       background:${color};
       border-radius:50%;
-      border:3px solid white;
-      box-shadow:0 2px 8px rgba(0,0,0,0.3), 0 0 0 ${size > 16 ? 3 : 2}px ${color}44;
+      border:3px solid rgba(255,255,255,0.9);
+      box-shadow:0 2px 8px rgba(0,0,0,0.35);
       transition: transform 0.2s;
     "></div>`,
     className: '',
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    iconSize: [px + 6, px + 6],
+    iconAnchor: [(px + 6) / 2, (px + 6) / 2],
   })
 }
 
 const ICONS = {
-  Crítico: createIcon('var(--severity-critico-badge)', 22),
-  Medio: createIcon('var(--severity-medio-badge)', 18),
-  Bajo: createIcon('var(--severity-bajo-badge)', 14),
-  Pendiente: createIcon('var(--text-muted)', 14),
+  Crítico: createIcon('var(--severity-critico-badge)', 24),
+  Medio: createIcon('var(--severity-medio-badge)', 22),
+  Bajo: createIcon('var(--severity-bajo-badge)', 20),
+  Pendiente: createIcon('#3b82f6', 20),
 }
 
 const START_ICON = L.divIcon({
@@ -86,13 +87,13 @@ export default function MapView({ reports, route, routeGeometry, onToggleReport,
           const icon = isSelected
             ? L.divIcon({
                 html: `<div style="
-                  width:24px;height:24px;
+                  width:26px;height:26px;
                   background:var(--color-primary, #059669);
                   border-radius:50%;
-                  border:3px solid var(--severity-bajo-border, #bbf7d0);
-                  box-shadow:0 0 0 4px rgba(5,150,105,0.4);
+                  border:3px solid white;
+                  box-shadow:0 0 0 4px rgba(5,150,105,0.5), 0 2px 8px rgba(0,0,0,0.35);
                   display:flex;align-items:center;justify-content:center;
-                  color:white;font-size:13px;font-weight:700;
+                  color:white;font-size:14px;font-weight:700;
                 ">✓</div>`,
                 className: '',
                 iconSize: [24, 24],
@@ -144,7 +145,7 @@ export default function MapView({ reports, route, routeGeometry, onToggleReport,
           { color: 'var(--severity-critico-badge)', label: 'Crítico' },
           { color: 'var(--severity-medio-badge)', label: 'Medio' },
           { color: 'var(--severity-bajo-badge)', label: 'Bajo' },
-          { color: 'var(--text-muted)', label: 'Pendiente' },
+          { color: '#3b82f6', label: 'Pendiente' },
           { color: 'var(--color-secondary)', label: 'Inicio' },
         ].map(item => (
           <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -157,7 +158,7 @@ export default function MapView({ reports, route, routeGeometry, onToggleReport,
         ))}
         {polylinePositions.length > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <div style={{ width: 20, height: 3, background: 'var(--color-primary)', borderRadius: 2 }} />
+            <div style={{ width: 20, height: 4, background: '#f97316', borderRadius: 2 }} />
             <span style={{ color: 'var(--legend-text)' }}>{hasGeometry ? 'Ruta por calles' : 'Ruta (línea recta)'}</span>
           </div>
         )}

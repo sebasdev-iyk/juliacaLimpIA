@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { useReports } from '../context/ReportsContext'
 import { JULIACA_CENTER } from '../data/mockReports'
-import { ChevronLeft, ChevronRight, MapPin, Camera, FileText, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, Camera, Check } from 'lucide-react'
 
 function LocationMarker({ position, onLocationChange }) {
   useMapEvents({
@@ -24,7 +24,6 @@ function LocationMarker({ position, onLocationChange }) {
 const STEPS = [
   { key: 'location', icon: MapPin, label: 'Ubicación' },
   { key: 'photo', icon: Camera, label: 'Foto' },
-  { key: 'description', icon: FileText, label: 'Descripción' },
 ]
 
 export default function UserPage() {
@@ -36,7 +35,6 @@ export default function UserPage() {
   const [position, setPosition] = useState(null)
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
-  const [desc, setDesc] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const fileInputRef = useRef(null)
 
@@ -59,7 +57,7 @@ export default function UserPage() {
 
     const report = {
       id: Date.now(),
-      descripcion: desc || 'Reporte desde la app',
+      descripcion: 'Reporte desde la app',
       latitud: position[0],
       longitud: position[1],
       nivel: 'Pendiente',
@@ -115,7 +113,7 @@ export default function UserPage() {
           Gracias por ayudar a mantener Juliaca limpia
         </p>
         <button
-          onClick={() => { setSubmitted(false); setStep(0); setPosition(null); setImageFile(null); setImagePreview(null); setDesc('') }}
+          onClick={() => { setSubmitted(false); setStep(0); setPosition(null); setImageFile(null); setImagePreview(null) }}
           style={{
             marginTop: 8, padding: '14px 40px', borderRadius: 12,
             background: 'var(--color-primary)', color: 'white', border: 'none',
@@ -244,25 +242,7 @@ export default function UserPage() {
           </div>
         )}
 
-        {step === 2 && (
-          <div style={{ height: '100%', padding: '0 16px' }}>
-            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>
-              Describe lo que ves
-            </label>
-            <textarea
-              value={desc}
-              onChange={e => setDesc(e.target.value)}
-              placeholder="Ej: Bolsas de basura acumuladas en la esquina..."
-              style={{
-                width: '100%', height: '70%', padding: 14, borderRadius: 12,
-                border: '1.5px solid var(--border-color)', fontSize: 14, lineHeight: 1.5,
-                resize: 'none', fontFamily: 'Inter, sans-serif',
-                background: 'var(--bg-input)', color: 'var(--text-primary)',
-                outline: 'none',
-              }}
-            />
-          </div>
-        )}
+
       </div>
 
       <div style={{

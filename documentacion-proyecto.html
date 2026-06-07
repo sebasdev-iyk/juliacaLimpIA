@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { margin: 2.5cm 2cm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #1e293b;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  h1 { font-size: 26pt; color: #059669; border-bottom: 4px solid #059669; padding-bottom: 8px; margin-top: 0; }
+  h2 { font-size: 18pt; color: #047857; border-bottom: 2px solid #d1fae5; padding-bottom: 4px; margin-top: 30px; }
+  h3 { font-size: 14pt; color: #065f46; margin-top: 20px; }
+  h4 { font-size: 12pt; color: #1e293b; margin-top: 15px; }
+  p { margin: 6px 0; }
+  ul, ol { margin: 6px 0; padding-left: 24px; }
+  li { margin: 3px 0; }
+  code { font-family: 'Consolas', 'Courier New', monospace; font-size: 10pt; background: #f1f5f9; padding: 2px 5px; border-radius: 3px; }
+  pre { background: #1e293b; color: #e2e8f0; padding: 12px 16px; border-radius: 6px; overflow-x: auto; font-size: 9pt; line-height: 1.5; }
+  .info-box { background: #ecfdf5; border-left: 4px solid #059669; padding: 10px 14px; margin: 12px 0; border-radius: 4px; }
+  .warn-box { background: #fffbeb; border-left: 4px solid #eab308; padding: 10px 14px; margin: 12px 0; border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10pt; }
+  th { background: #059669; color: white; padding: 8px 10px; text-align: left; }
+  td { padding: 6px 10px; border-bottom: 1px solid #e2e8f0; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9pt; font-weight: 600; }
+  .tag-red { background: #fef2f2; color: #dc2626; }
+  .tag-yellow { background: #fffbeb; color: #d97706; }
+  .tag-green { background: #f0fdf4; color: #16a34a; }
+  .tag-blue { background: #eff6ff; color: #2563eb; }
+  .cover {
+    text-align: center; padding: 60px 40px;
+    background: linear-gradient(135deg, #059669, #047857);
+    color: white; border-radius: 12px; margin-bottom: 30px;
+  }
+  .cover h1 { font-size: 32pt; color: white; border: none; margin: 0; }
+  .cover h2 { font-size: 16pt; color: #d1fae5; border: none; font-weight: 400; margin: 10px 0 0; }
+  .cover .date { margin-top: 20px; font-size: 11pt; opacity: 0.85; }
+  .flow-diagram {
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    padding: 20px; background: #f8fafc; border-radius: 8px; margin: 15px 0;
+    font-size: 10pt; font-weight: 600;
+  }
+  .flow-step {
+    background: #059669; color: white; padding: 8px 14px; border-radius: 6px;
+  }
+  .flow-arrow { color: #059669; font-size: 16pt; }
+  .page-break { page-break-before: always; }
+  .subtitle { font-size: 12pt; color: #64748b; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>🗑️ JulIAca LimpIA</h1>
+  <h2>Rutas de Limpieza Inteligentes</h2>
+  <p class="date">Documentación Técnica — Hackathon 2026<br>Puno, Perú</p>
+</div>
+
+<p class="subtitle">
+  Sistema de optimización de rutas de recolección de basura usando visión por computadora (YOLO-World)
+  y algoritmos de ruteo inteligente. Convierte fotos ciudadanas en rutas de limpieza prioritarias.
+</p>
+
+<!-- ============================================================ -->
+<h2>1. Visión General del Sistema</h2>
+
+<p>El sistema resuelve el problema de las <strong>rutas fijas de recolección de basura</strong> que no responden a la demanda real,
+generando acumulación de residuos en zonas críticas, pérdida de tiempo y combustible.</p>
+
+<p><strong>Flujo principal:</strong></p>
+<div class="flow-diagram">
+  <span class="flow-step">📸 Foto</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step" style="background:#047857;">🧠 Análisis IA</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step" style="background:#065f46;">🗺️ Mapa</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step" style="background:#064e3b;">🚛 Ruta Inteligente</span>
+</div>
+
+<ol>
+  <li><strong>Reporte:</strong> Ciudadano sube foto y marca ubicación en el mapa</li>
+  <li><strong>Análisis IA:</strong> YOLO-World detecta objetos (contenedores, bolsas, desbordes) y calcula severidad</li>
+  <li><strong>Visualización:</strong> Los reportes aparecen en el mapa con colores según nivel (Crítico/Medio/Bajo)</li>
+  <li><strong>Ruta Inteligente:</strong> Algoritmo genera la ruta óptima priorizando puntos críticos por cercanía</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2>2. Arquitectura del Sistema</h2>
+
+<table>
+  <tr><th>Componente</th><th>Tecnología</th><th>Función</th></tr>
+  <tr><td>Frontend</td><td>React 18 + Vite 5 + Leaflet</td><td>Interfaz de usuario, mapas interactivos</td></tr>
+  <tr><td>Backend IA</td><td>FastAPI + YOLO-World + Ultralytics</td><td>Detección de objetos y cálculo de severidad</td></tr>
+  <tr><td>Ruteo (OSRM)</td><td>API pública router.project-osrm.org</td><td>Rutas por calles reales con OpenStreetMap</td></tr>
+  <tr><td>Almacenamiento</td><td>localStorage del navegador</td><td>Persistencia de reportes en el cliente</td></tr>
+</table>
+
+<div class="info-box">
+  <strong>Endpoints del Backend (puerto 8000):</strong><br>
+  <code>GET /health</code> — Health check<br>
+  <code>GET /status</code> — Estado del modelo y clases soportadas<br>
+  <code>POST /analyze</code> — Analiza imagen (devuelve JSON con detecciones + imagen anotada)<br>
+  <code>POST /analyze-with-image</code> — Analiza y devuelve imagen anotada como JPEG
+</div>
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+<h2>3. Detección de Basura con YOLO-World</h2>
+
+<h3>3.1 ¿Qué es YOLO-World?</h3>
+<p>YOLO-World es un modelo de detección de objetos <strong>zero-shot</strong> de última generación. A diferencia de los modelos tradicionales
+que solo detectan clases pre-entrenadas fijas (como COCO con 80 clases), YOLO-World permite <strong>definir cualquier lista de clases en tiempo de inferencia</strong>
+sin necesidad de re-entrenar. Esto lo hace ideal para detectar basura, ya que el vocabulario es muy variado.</p>
+
+<h3>3.2 Vocabulario de Detección</h3>
+<p>El sistema define <strong>112 clases</strong> en español e inglés organizadas en categorías:</p>
+
+<table>
+  <tr><th>Categoría</th><th>Ejemplos</th></tr>
+  <tr><td>Contenedores</td><td><code>waste container, dumpster, trash can, contenedor de basura</code></td></tr>
+  <tr><td>Desbordes</td><td><code>overflowing dumpster, full garbage container, overfilled dumpster</code></td></tr>
+  <tr><td>Bolsas</td><td><code>trash bags, garbage bags, bolsas de basura</code></td></tr>
+  <tr><td>Acumulaciones</td><td><code>garbage pile, pile of trash, construction debris</code></td></tr>
+  <tr><td>Basura individual</td><td><code>bottle, can, paper, plastic bag, tire, electronic waste</code></td></tr>
+  <tr><td>Items callejeros (Perú)</td><td><code>mascarilla, vaso plastico, cascara, zapato, colchon</code></td></tr>
+</table>
+
+<h3>3.3 Fallback Chain</h3>
+<p>El detector implementa una cadena de resiliencia:</p>
+<ol>
+  <li><strong>YOLO-World</strong> (yolov8s-world.pt) — intenta cargar el modelo completo</li>
+  <li><strong>GPU/CUDA</strong> — si hay GPU disponible, el modelo se mueve a CUDA para aceleración</li>
+  <li><strong>Frontend fallback</strong> — si el backend no está disponible, el frontend usa un analizador simulado</li>
+</ol>
+
+<h3>3.4 Colores por Clase</h3>
+<p>Cada categoría de objeto detectado tiene un color asignado para los bounding boxes:</p>
+<table>
+  <tr><th>Categoría</th><th>Color (BGR)</th><th>Visual</th></tr>
+  <tr><td>Contenedores</td><td>Verde (60, 180, 75)</td><td><span style="display:inline-block;width:20px;height:12px;background:#4bb34b;border-radius:2px;"></span></td></tr>
+  <tr><td>Desbordes</td><td>Rojo (60, 60, 255)</td><td><span style="display:inline-block;width:20px;height:12px;background:#ff3c3c;border-radius:2px;"></span></td></tr>
+  <tr><td>Bolsas</td><td>Naranja (0, 165, 255)</td><td><span style="display:inline-block;width:20px;height:12px;background:#ffa500;border-radius:2px;"></span></td></tr>
+  <tr><td>Basura individual</td><td>Celeste (255, 180, 100)</td><td><span style="display:inline-block;width:20px;height:12px;background:#64b4ff;border-radius:2px;"></span></td></tr>
+</table>
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+<h2>4. Cálculo de Severidad</h2>
+
+<p>El archivo <code>severity.py</code> implementa la lógica que convierte las detecciones del modelo en
+<strong>niveles de severidad</strong> accionables.</p>
+
+<h3>4.1 Clasificación de Objetos</h3>
+<table>
+  <tr><th>Grupo</th><th>Nivel Asignado</th><th>Ejemplos</th></tr>
+  <tr><td>CRITICAL_CLASSES</td><td><span class="tag tag-red">Crítico</span></td><td>overflowing dumpster, garbage pile, construction debris</td></tr>
+  <tr><td>MEDIUM_CLASSES</td><td><span class="tag tag-yellow">Medio</span></td><td>trash bags, scattered trash, basura, residuos</td></tr>
+  <tr><td>LOW_CLASSES</td><td><span class="tag tag-green">Bajo</span></td><td>waste container, dumpster, recycling bin</td></tr>
+  <tr><td>INDIVIDUAL_TRASH</td><td>Variable según cantidad</td><td>bottle, can, paper, tire, mascarilla</td></tr>
+</table>
+
+<h3>4.2 Reglas de Severidad</h3>
+<p>El sistema aplica <strong>9 reglas jerárquicas</strong> en orden de prioridad:</p>
+
+<table>
+  <tr><th>#</th><th>Condición</th><th>Resultado</th></tr>
+  <tr><td>1</td><td>Desborde o acumulación grave presente</td><td><span class="tag tag-red">Crítico</span></td></tr>
+  <tr><td>2</td><td>Bolsas/basura en suelo + contenedor presente</td><td><span class="tag tag-yellow">Medio</span></td></tr>
+  <tr><td>3</td><td>2+ objetos de basura individual (botellas, latas...)</td><td><span class="tag tag-yellow">Medio</span></td></tr>
+  <tr><td>4</td><td>2+ bolsas de basura sueltas</td><td><span class="tag tag-yellow">Medio</span></td></tr>
+  <tr><td>5</td><td>Bolsas + basura individual combinados</td><td><span class="tag tag-yellow">Medio</span></td></tr>
+  <tr><td>6</td><td>Contenedor limpio + basura individual alrededor</td><td><span class="tag tag-yellow">Medio</span></td></tr>
+  <tr><td>7</td><td>Contenedor solo y limpio</td><td><span class="tag tag-green">Bajo</span></td></tr>
+  <tr><td>8</td><td>1-2 objetos individuales solos</td><td><span class="tag tag-green">Bajo</span></td></tr>
+  <tr><td>9</td><td>Sin detecciones relevantes</td><td><span class="tag tag-green">Bajo</span></td></tr>
+</table>
+
+<h3>4.3 Métricas de Salida</h3>
+<p>El endpoint <code>POST /analyze</code> devuelve:</p>
+<pre>{
+  "basura_detectada": true,
+  "nivel": "Crítico",
+  "confianza": "93%",
+  "prioridad": "Alta",
+  "resumen": "overflowing dumpster (93%), trash bags (87%)",
+  "objetos": [{ "clase": "overflowing dumpster", "confianza": 0.93, "bbox": [120,45,300,280] }],
+  "imagen_anotada_b64": "data:image/jpeg;base64,...",
+  "colores_clases": { "overflowing dumpster": "#ff3c3c" }
+}</pre>
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+<h2>5. Algoritmo de Ruta Inteligente</h2>
+
+<p>El algoritmo está implementado en <code>src/utils/routeOptimizer.js</code> y combina
+<strong>ordenamiento por prioridad</strong> con la heurística del <strong>vecino más cercano</strong>.</p>
+
+<h3>5.1 Lógica del Algoritmo</h3>
+<pre>1. Asignar peso numérico a cada nivel:
+     Crítico = 3, Medio = 2, Bajo = 1
+
+2. Ordenar todos los reportes por prioridad descendente
+
+3. Para cada grupo del mismo nivel de prioridad:
+   a. Empezar desde el punto actual (municipalidad primero)
+   b. Elegir el punto MÁS CERCANO al actual (distancia Haversine)
+   c. Avanzar a ese punto y repetir
+
+4. Calcular métricas finales:
+   - Distancia total (Haversine entre puntos consecutivos)
+   - Tiempo estimado (velocidad promedio 30 km/h)
+   - Combustible (0.4 L/km)
+   - CO₂ evitado (2.68 kg/L de combustible)
+   - Ahorro % vs ruta fija (22% más larga)
+</pre>
+
+<h3>5.2 Distancia Haversine</h3>
+<p>Para calcular distancias entre coordenadas GPS se usa la <strong>fórmula de Haversine</strong>,
+que calcula la distancia del gran círculo entre dos puntos en una esfera (Tierra, R=6371 km):</p>
+<pre>d = 2R · arcsin(√(sin²(Δlat/2) + cos(lat₁)·cos(lat₂)·sin²(Δlng/2)))</pre>
+
+<h3>5.3 Ruteo por Calles Reales (OSRM)</h3>
+<p>Además de la ruta en línea recta, el sistema se conecta a la <strong>API pública de OSRM</strong>
+(Open Source Routing Machine, basada en OpenStreetMap) para obtener rutas que siguen <strong>calles reales</strong>:</p>
+<ul>
+  <li><strong>URL:</strong> <code>https://router.project-osrm.org/route/v1/driving/{coordenadas}?geometries=geojson</code></li>
+  <li><strong>Parámetros:</strong> coordenadas en formato <code>lng,lat</code> separadas por punto y coma</li>
+  <li><strong>Respuesta:</strong> GeoJSON con la geometría de la ruta, distancia y duración</li>
+</ul>
+
+<p>Si OSRM no está disponible (sin internet), el sistema <strong>simula</strong> la ruta generando
+puntos intermedios con desviaciones senoidales y aumentando la distancia un 25% sobre la línea recta.</p>
+
+<div class="warn-box">
+  <strong>Nota:</strong> OSRM es una API pública gratuita sin necesidad de API key, pero tiene
+  límites de uso. Para producción, se recomienda hostear un servidor OSRM propio.
+</div>
+
+<h3>5.4 Métricas de Salida de la Ruta</h3>
+<table>
+  <tr><th>Métrica</th><th>Cálculo</th><th>Ejemplo</th></tr>
+  <tr><td>Distancia</td><td>Suma de Haversine entre cada parada</td><td>12.4 km</td></tr>
+  <tr><td>Tiempo</td><td>Distancia / 30 km/h × 60 min</td><td>25 min</td></tr>
+  <tr><td>Combustible</td><td>Distancia × 0.4 L/km</td><td>5.0 L</td></tr>
+  <tr><td>CO₂ evitado</td><td>Combustible × 2.68 kg/L</td><td>13.4 kg</td></tr>
+  <tr><td>Ahorro</td><td>(ruta_fija - ruta_opt) / ruta_fija</td><td>18%</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+<h2>6. Flujo de Datos Completo</h2>
+
+<h3>6.1 Reporte desde la App Ciudadana</h3>
+<pre>Usuario (UserPage)
+  │
+  ├── Paso 1: Selecciona ubicación en el mapa (Leaflet)
+  ├── Paso 2: Toma/sube foto (cámara o galería)
+  ├── Paso 3: Describe el problema
+  │
+  └── Guarda en localStorage → ReportsContext
+       ↓
+Aparece en el mapa de la vista de basura (BasuraPage)
+       ↓
+Botón "Procesar con IA" → POST /analyze → YOLO-World
+       ↓
+       Resultado: nivel, objetos, imagen anotada con bounding boxes
+       ↓
+Actualiza reporte en el mapa con colores según severidad</pre>
+
+<h3>6.2 Ruta desde la Central de Monitoreo</h3>
+<pre>Operador (BasuraPage)
+  │
+  ├── Ve todos los reportes en el mapa con colores
+  │   🔴 Crítico · 🟡 Medio · 🟢 Bajo
+  │
+  ├── Presiona "Generar Ruta"
+  │   ↓
+  │   routeOptimizer.js ordena por prioridad + vecino cercano
+  │   ↓
+  │   OSRM calcula ruta por calles reales (o simulación offline)
+  │   ↓
+  │   Polyline dibuja la ruta en el mapa
+  │   ↓
+  │   Panel muestra: distancia, tiempo, combustible, CO₂, ahorro
+  │
+  └── Operador sigue el orden de paradas numeradas</pre>
+
+<h3>6.3 Detalle del Análisis de Imagen</h3>
+<pre>Frontend                     Backend (FastAPI)
+  │                              │
+  POST /analyze ────────────────→│
+  (multipart: file=imagen.jpg)    │
+  │                              ├── YOLO(img, conf=0.02)
+  │                              │   → 112 clases zero-shot
+  │                              │
+  │                              ├── compute_severity()
+  │                              │   → nivel + prioridad + resumen
+  │                              │
+  │                              ├── draw_bboxes()
+  │                              │   → imagen JPEG con rectángulos
+  │                              │
+  ←── JSON ─────────────────────│
+  {                              │
+    nivel, confianza,            │
+    objetos: [{clase,bbox}],     │
+    imagen_anotada_b64,          │
+    colores_clases              │
+  }                              │
+  │                              │
+  ├── BboxOverlay muestra imagen anotada
+  ├── Slider de confianza mínima
+  ├── Leyenda de clases ocultable
+  └── Botón "Agregar reporte al mapa"</pre>
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+<h2>7. Estructura del Proyecto</h2>
+
+<pre>
+rutas-limpieza-inteligentes/
+├── ai-service/                    # Backend Python
+│   ├── main.py                    # API FastAPI (entry point)
+│   ├── detector.py                # YOLO-World: carga, inferencia, dibujo
+│   ├── severity.py                # Lógica de severidad (9 reglas)
+│   ├── requirements.txt           # fastapi, uvicorn, ultralytics, Pillow
+│   ├── run.sh                     # Script de inicio
+│   └── yolov8s-world.pt          # Modelo YOLO-World pre-entrenado
+│
+├── src/                           # Frontend React
+│   ├── main.jsx                   # Entry point
+│   ├── App.jsx                    # Router (2 rutas: /user y /basura)
+│   ├── styles.css                 # 1400+ líneas de estilos mobile-first
+│   │
+│   ├── pages/
+│   │   ├── UserPage.jsx           # App ciudadana (3 pasos: mapa, foto, desc)
+│   │   └── BasuraPage.jsx         # Dashboard operario (mapa + ruta + análisis)
+│   │
+│   ├── components/
+│   │   ├── MapView.jsx            # Mapa Leaflet con marcadores y polyline
+│   │   ├── ReportForm.jsx         # Formulario de reporte con análisis IA
+│   │   ├── RoutePanel.jsx         # Panel de ruta generada (métricas + paradas)
+│   │   ├── StatsCards.jsx         # Tarjetas de estadísticas
+│   │   └── BboxOverlay.jsx        # Overlay de bounding boxes en imagen
+│   │
+│   ├── context/
+│   │   └── ReportsContext.jsx     # Estado global (useContext + localStorage)
+│   │
+│   ├── data/
+│   │   └── mockReports.js         # 7 reportes iniciales de Juliaca
+│   │
+│   ├── services/
+│   │   └── aiAnalyzer.js          # Cliente HTTP para backend IA
+│   │
+│   └── utils/
+│       ├── distance.js            # Fórmula Haversine
+│       ├── routeOptimizer.js      # Algoritmo de ruta inteligente
+│       ├── osrmRouter.js          # Cliente OSRM + simulador offline
+│       └── fakeImageAnalyzer.js   # Simulador de análisis (fallback)
+│
+├── vite.config.js
+├── package.json
+└── index.html
+</pre>
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+<h2>8. Tecnologías y Librerías</h2>
+
+<table>
+  <tr><th>Librería</th><th>Versión</th><th>Propósito</th></tr>
+  <tr><td>React</td><td>18.2</td><td>Framework UI</td></tr>
+  <tr><td>Vite</td><td>5.4</td><td>Bundler y dev server</td></tr>
+  <tr><td>Leaflet / react-leaflet</td><td>1.9 / 4.2</td><td>Mapas interactivos OpenStreetMap</td></tr>
+  <tr><td>Lucide React</td><td>1.16</td><td>Iconos SVG</td></tr>
+  <tr><td>react-router-dom</td><td>7.17</td><td>Ruteo del frontend</td></tr>
+  <tr><td>FastAPI</td><td>0.100+</td><td>API REST del backend</td></tr>
+  <tr><td>Uvicorn</td><td>0.23+</td><td>Servidor ASGI</td></tr>
+  <tr><td>Ultralytics (YOLO-World)</td><td>8.2+</td><td>Detección zero-shot</td></tr>
+  <tr><td>Pillow</td><td>10+</td><td>Procesamiento de imágenes</td></tr>
+  <tr><td>python-multipart</td><td>0.0.6+</td><td>Soporte multipart/form-data en FastAPI</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>9. Cómo Ejecutar</h2>
+
+<div class="info-box">
+  <strong>Prerrequisitos:</strong> Node.js 18+, Python 3.10+, pip
+</div>
+
+<h3>Backend (IA)</h3>
+<pre>cd rutas-limpieza-inteligentes/ai-service
+pip install -r requirements.txt
+python3 main.py
+# → Servidor en http://localhost:8000</pre>
+
+<h3>Frontend</h3>
+<pre>cd rutas-limpieza-inteligentes
+npm install
+npm run dev -- --host
+# → Servidor en http://localhost:5173</pre>
+
+<div class="warn-box">
+  <strong>Nota:</strong> El modelo YOLO-World (~80 MB) se descarga automáticamente
+  la primera vez desde la caché de Ultralytics. Si no hay GPU, se ejecuta en CPU.
+  Sin backend, el frontend usa un analizador simulado.
+</div>
+
+<!-- ============================================================ -->
+<div class="page-break"></div>
+<h2>10. Posibles Mejoras</h2>
+
+<table>
+  <tr><th>Área</th><th>Mejora</th></tr>
+  <tr>
+    <td>Backend</td>
+    <td>Hostear OSRM propio para no depender de API pública con rate limits</td>
+  </tr>
+  <tr>
+    <td>Backend</td>
+    <td>Implementar autenticación y base de datos (PostgreSQL + PostGIS)</td>
+  </tr>
+  <tr>
+    <td>IA</td>
+    <td>Fine-tuning de YOLO-World con imágenes locales de contenedores peruanos</td>
+  </tr>
+  <tr>
+    <td>Frontend</td>
+    <td>Notificaciones push a camiones de basura con rutas asignadas</td>
+  </tr>
+  <tr>
+    <td>Frontend</td>
+    <td>App móvil nativa (React Native) con GPS en tiempo real</td>
+  </tr>
+  <tr>
+    <td>Ruteo</td>
+    <td>Algoritmo TSP (Traveling Salesman Problem) con restricciones de capacidad de camión</td>
+  </tr>
+  <tr>
+    <td>Almacenamiento</td>
+    <td>Migrar de localStorage a backend con API REST para datos persistentes</td>
+  </tr>
+</table>
+
+<!-- ============================================================ -->
+<h2>11. Resumen Visual del Sistema</h2>
+
+<div style="display:flex;gap:8px;justify-content:center;margin:20px 0;">
+  <div style="text-align:center;flex:1">
+    <div style="font-size:40px;margin-bottom:5px;">📸</div>
+    <div style="font-weight:600;">Reporte</div>
+    <div style="font-size:10pt;color:#64748b;">Foto + GPS</div>
+  </div>
+  <div style="font-size:30px;color:#059669;display:flex;align-items:center;">→</div>
+  <div style="text-align:center;flex:1">
+    <div style="font-size:40px;margin-bottom:5px;">🧠</div>
+    <div style="font-weight:600;">Análisis</div>
+    <div style="font-size:10pt;color:#64748b;">YOLO-World</div>
+  </div>
+  <div style="font-size:30px;color:#059669;display:flex;align-items:center;">→</div>
+  <div style="text-align:center;flex:1">
+    <div style="font-size:40px;margin-bottom:5px;">🔴🟡🟢</div>
+    <div style="font-weight:600;">Severidad</div>
+    <div style="font-size:10pt;color:#64748b;">Crítico/Medio/Bajo</div>
+  </div>
+  <div style="font-size:30px;color:#059669;display:flex;align-items:center;">→</div>
+  <div style="text-align:center;flex:1">
+    <div style="font-size:40px;margin-bottom:5px;">🚛</div>
+    <div style="font-weight:600;">Ruta Óptima</div>
+    <div style="font-size:10pt;color:#64748b;">Vecino cercano + OSRM</div>
+  </div>
+</div>
+
+<hr style="margin:30px 0;border:none;border-top:2px solid #e2e8f0;">
+<div style="text-align:center;color:#94a3b8;font-size:10pt;">
+  JulIAca LimpIA — Hackathon 2026 · Puno, Perú<br>
+  <code>https://github.com/&lt;tu-repo&gt;/juliacaLimpIA</code>
+</div>
+
+</body>
+</html>

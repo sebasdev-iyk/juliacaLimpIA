@@ -1218,10 +1218,11 @@ body {
 
 /* Leaflet route polyline — uses CSS class instead of SVG attribute for dark mode support */
 .route-polyline {
-  stroke: var(--color-primary) !important;
-  stroke-width: 4 !important;
-  stroke-opacity: 0.8 !important;
-  stroke-dasharray: 12, 8 !important;
+  stroke: #f97316 !important;
+  stroke-width: 5 !important;
+  stroke-opacity: 0.9 !important;
+  stroke-dasharray: 14, 10 !important;
+  filter: drop-shadow(0 0 4px rgba(249,115,22,0.4));
 }
 
 /* ==========================================
