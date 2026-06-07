@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useReportes } from '../store/reportStore'
 
 const STATUS_STYLES = {
@@ -14,24 +15,30 @@ const LEVEL_BADGES = {
 }
 
 export default function ReportsPage() {
+  const navigate = useNavigate()
   const { reports } = useReportes()
 
   return (
     <div className="min-h-screen gradient-bg-light pb-24">
-      <header className="sticky top-0 z-50 flex justify-between items-center px-5 h-16 bg-white/70 backdrop-blur-xl border-b border-emerald-100/50">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-sm">
-            <span className="material-symbols-outlined text-white text-base">assignment</span>
+      <header className="sticky top-0 z-50 flex items-center gap-2 px-5 h-16 bg-white/70 backdrop-blur-xl border-b border-emerald-100/50">
+        <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-all shrink-0">
+          <span className="material-symbols-outlined text-gray-500 text-lg">arrow_back</span>
+        </button>
+        <div className="flex items-center justify-between flex-1">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-sm">
+              <span className="material-symbols-outlined text-white text-base">assignment</span>
+            </div>
+            <div>
+              <h1 className="font-bold text-gray-900 text-sm">Mis Reportes</h1>
+              <p className="text-[10px] text-gray-400 font-medium">{reports.length} contribuciones</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-bold text-gray-900 text-sm">Mis Reportes</h1>
-            <p className="text-[10px] text-gray-400 font-medium">{reports.length} contribuciones</p>
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-semibold bg-white/80 text-gray-500 px-3 py-1.5 rounded-xl border border-gray-200 shadow-sm">
+              {reports.filter(r => r.estado === 'Resuelto').length} resueltos
+            </span>
           </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-semibold bg-white/80 text-gray-500 px-3 py-1.5 rounded-xl border border-gray-200 shadow-sm">
-            {reports.filter(r => r.estado === 'Resuelto').length} resueltos
-          </span>
         </div>
       </header>
 

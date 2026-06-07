@@ -127,7 +127,7 @@ export default function MapView({ reports, route, routeGeometry, onToggleReport,
                       {r.nivel}
                     </span>
                     <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                      🎯 {r.confianza}
+                      🎯 {r.analisis_ia?.confianza || r.confianza}
                     </span>
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>

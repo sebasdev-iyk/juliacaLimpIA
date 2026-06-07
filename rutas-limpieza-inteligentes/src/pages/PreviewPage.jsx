@@ -3,39 +3,43 @@ import { useNavigate } from 'react-router-dom'
 import { useReportes } from '../store/reportStore'
 import { analyzeImage } from '../services/aiAnalyzer'
 
-const ZONES = [
-  'Plaza de Armas', 'Mercado Santa Bárbara', 'Terminal Terrestre',
-  'Universidad Andina', 'Av. Circunvalación', 'Zona Industrial',
-  'Barrio La Era', 'Cerro Santa Bárbara', 'Salida Cusco',
-  'Salida Arequipa', 'Estadio', 'Aeropuerto',
-]
-
-const ZONE_COORDS = {
-  'Plaza de Armas': { lat: -15.4908, lng: -70.1325 },
-  'Mercado Santa Bárbara': { lat: -15.4905, lng: -70.1345 },
-  'Terminal Terrestre': { lat: -15.4940, lng: -70.1370 },
-  'Universidad Andina': { lat: -15.4870, lng: -70.1200 },
-  'Av. Circunvalación': { lat: -15.4920, lng: -70.1280 },
-  'Zona Industrial': { lat: -15.4950, lng: -70.1400 },
-  'Barrio La Era': { lat: -15.4890, lng: -70.1260 },
-  'Cerro Santa Bárbara': { lat: -15.4860, lng: -70.1350 },
-  'Salida Cusco': { lat: -15.4850, lng: -70.1150 },
-  'Salida Arequipa': { lat: -15.4980, lng: -70.1380 },
-  'Estadio': { lat: -15.4880, lng: -70.1300 },
-  'Aeropuerto': { lat: -15.4770, lng: -70.1570 },
-}
-
 const NIVELES = [
   { key: 'Bajo', color: 'border-emerald-500 bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
   { key: 'Medio', color: 'border-amber-500 bg-amber-50 text-amber-700', dot: 'bg-amber-500' },
   { key: 'Crítico', color: 'border-red-500 bg-red-50 text-red-700', dot: 'bg-red-500' },
 ]
 
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/reverse'
+
+const JULIACA_CENTER = { lat: -15.4911, lng: -70.1331 }
+const JULIACA_RADIO_KM = 8
+
+function calcDistancia(lat1, lng1, lat2, lng2) {
+  const R = 6371
+  const dLat = (lat2 - lat1) * Math.PI / 180
+  const dLng = (lng2 - lng1) * Math.PI / 180
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const res = await fetch(`${NOMINATIM_URL}?lat=${lat}&lon=${lng}&format=json&addressdetails=1&accept-language=es`, {
+      headers: { 'User-Agent': 'JulIacaLimpIA/1.0' },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.display_name || null
+  } catch {
+    return null
+  }
+}
+
 export default function PreviewPage() {
   const navigate = useNavigate()
   const { addReport } = useReportes()
   const [comment, setComment] = useState('')
-  const [zone, setZone] = useState(ZONES[0])
   const [nivel, setNivel] = useState('Medio')
   const [sending, setSending] = useState(false)
   const [foto] = useState(() => sessionStorage.getItem('current_foto') || '')
@@ -45,8 +49,75 @@ export default function PreviewPage() {
   const [showResults, setShowResults] = useState(false)
   const [aiError, setAiError] = useState(null)
 
+  const [ubicacion, setUbicacion] = useState(null)
+  const [direccion, setDireccion] = useState('')
+  const [buscandoDir, setBuscandoDir] = useState(true)
+  const [errorUbicacion, setErrorUbicacion] = useState(null)
+  const [fueradeJuliaca, setFueradeJuliaca] = useState(false)
+  const [distanciaKm, setDistanciaKm] = useState(0)
+
   useEffect(() => {
     if (!foto) navigate('/ciudadano/camara', { replace: true })
+  }, [])
+
+  useEffect(() => {
+    let cancel = false
+
+    async function obtenerUbicacion() {
+      setBuscandoDir(true)
+
+      function procesarCoordenadas(lat, lng) {
+        setUbicacion({ lat, lng })
+        const d = calcDistancia(lat, lng, JULIACA_CENTER.lat, JULIACA_CENTER.lng)
+        setDistanciaKm(d)
+        setFueradeJuliaca(d > JULIACA_RADIO_KM)
+      }
+
+      // 1. Intentar desde sessionStorage (seteado por CameraPage)
+      try {
+        const raw = sessionStorage.getItem('current_ubicacion')
+        if (raw) {
+          const parsed = JSON.parse(raw)
+          if (parsed.lat && parsed.lng) {
+            procesarCoordenadas(parseFloat(parsed.lat), parseFloat(parsed.lng))
+            const dir = await reverseGeocode(parsed.lat, parsed.lng)
+            if (!cancel) {
+              setDireccion(dir || `Lat: ${parsed.lat}, Lng: ${parsed.lng}`)
+              setBuscandoDir(false)
+            }
+            return
+          }
+        }
+      } catch {}
+
+      // 2. Intentar geolocation del navegador
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            if (cancel) return
+            const { latitude: lat, longitude: lng } = pos.coords
+            procesarCoordenadas(lat, lng)
+            const dir = await reverseGeocode(lat, lng)
+            if (!cancel) {
+              setDireccion(dir || `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`)
+              setBuscandoDir(false)
+            }
+          },
+          (err) => {
+            if (cancel) return
+            setErrorUbicacion('No se pudo obtener la ubicación. Activa el GPS.')
+            setBuscandoDir(false)
+          },
+          { enableHighAccuracy: true, timeout: 10000 },
+        )
+      } else {
+        setErrorUbicacion('Geolocalización no soportada en este navegador.')
+        setBuscandoDir(false)
+      }
+    }
+
+    obtenerUbicacion()
+    return () => { cancel = true }
   }, [])
 
   useEffect(() => {
@@ -100,30 +171,38 @@ export default function PreviewPage() {
 
   const handleSubmit = () => {
     setSending(true)
-    const coords = ZONE_COORDS[zone] || { lat: -15.4911, lng: -70.1331 }
+    const lat = ubicacion?.lat || -15.4911
+    const lng = ubicacion?.lng || -70.1331
     const now = new Date()
-    let ubicacion = null
-    try {
-      const raw = sessionStorage.getItem('current_ubicacion')
-      if (raw) ubicacion = JSON.parse(raw)
-    } catch {}
+
+    const analisis = result || {}
 
     const report = {
       id: Date.now(),
-      zona: zone,
+      zona: direccion ? direccion.split(',').slice(0, 2).join(',') : `Ubicación (${lat.toFixed(5)}, ${lng.toFixed(5)})`,
+      direccion: direccion || '',
       descripcion: comment || 'Reporte ciudadano',
-      latitud: ubicacion ? parseFloat(ubicacion.lat) + (Math.random() - 0.5) * 0.002 : coords.lat + (Math.random() - 0.5) * 0.004,
-      longitud: ubicacion ? parseFloat(ubicacion.lng) + (Math.random() - 0.5) * 0.002 : coords.lng + (Math.random() - 0.5) * 0.004,
+      latitud: lat + (Math.random() - 0.5) * 0.002,
+      longitud: lng + (Math.random() - 0.5) * 0.002,
       nivel: nivel,
-      confianza: result?.confianza || '0%',
-      prioridad: result?.prioridad || 'Media',
       estado: 'Pendiente',
       fecha: now.toLocaleDateString('es-PE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      timestamp: now.getTime(),
       comentario: comment,
       foto: foto,
-      objetos: result?.objetos || [],
-      metodo_ia: result?.metodo || 'Ninguno',
-      es_real: result?.es_real || false,
+      analisis_ia: {
+        basura_detectada: analisis.basura_detectada,
+        confianza: analisis.confianza || '0%',
+        prioridad: analisis.prioridad || 'Media',
+        resumen: analisis.resumen || '',
+        metodo: analisis.metodo || 'Ninguno',
+        es_real: analisis.es_real || false,
+        fallback_simulado: analisis.fallback_simulado || false,
+        objetos: analisis.objetos || [],
+        imagen_anotada_b64: analisis.imagen_anotada_b64 || null,
+        colores_clases: analisis.colores_clases || {},
+        timestamp_analisis: now.toISOString(),
+      },
     }
 
     addReport(report)
@@ -265,7 +344,6 @@ export default function PreviewPage() {
                 </div>
               </div>
 
-              {/* Advertencia si es simulado */}
               {aiError && (
                 <div className="mx-4 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
                   <span className="material-symbols-outlined text-amber-500 text-sm mt-0.5">warning</span>
@@ -273,7 +351,6 @@ export default function PreviewPage() {
                 </div>
               )}
 
-              {/* Métricas */}
               <div className="p-4 grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50">
                   <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Basura</p>
@@ -285,7 +362,6 @@ export default function PreviewPage() {
                 </div>
               </div>
 
-              {/* Objetos detectados */}
               {result.objetos?.length > 0 && (
                 <div className="px-4 pb-4 space-y-1.5">
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
@@ -315,6 +391,86 @@ export default function PreviewPage() {
             </div>
           )}
 
+          {/* Location card — detección automática */}
+          <div className={scanning ? 'opacity-40 pointer-events-none' : ''}>
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sm">location_on</span>
+              Ubicación detectada
+            </label>
+            <div className="rounded-2xl border-2 border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
+              {buscandoDir ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm font-medium text-emerald-700">Obteniendo ubicación...</span>
+                </div>
+              ) : errorUbicacion ? (
+                <div className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-amber-500 text-sm mt-0.5">warning</span>
+                  <div>
+                    <p className="text-sm font-medium text-amber-700">{errorUbicacion}</p>
+                    {ubicacion && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Coordenadas: {ubicacion.lat.toFixed(5)}, {ubicacion.lng.toFixed(5)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-emerald-600 text-sm">gps_fixed</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900 leading-snug">
+                        {direccion || 'Ubicación detectada'}
+                      </p>
+                      {ubicacion && (
+                        <p className="text-[10px] text-gray-500 font-mono mt-0.5">
+                          {ubicacion.lat.toFixed(5)}, {ubicacion.lng.toFixed(5)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0 mt-1.5" />
+                  </div>
+                  <div className="bg-white/70 rounded-xl px-3 py-2 border border-emerald-100">
+                    <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                      <span className="material-symbols-outlined text-xs">check_circle</span>
+                      Ubicación precisa — coordenadas obtenidas vía GPS
+                    </div>
+                  </div>
+                  {fueradeJuliaca && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1.5 animate-fade-in">
+                      <div className="flex items-start gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-red-500 text-sm">gps_off</span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-red-700">Fuera de Juliaca</p>
+                          <p className="text-[11px] text-red-600 leading-snug">
+                            La ubicación detectada está fuera del radio urbano de Juliaca.
+                            Los reportes deben corresponder a la ciudad para ser procesados.
+                          </p>
+                          <p className="text-[11px] font-bold text-red-700 mt-1 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-xs">block</span>
+                            No se puede enviar el reporte fuera de Juliaca
+                          </p>
+                        </div>
+                      </div>
+                      <div className="bg-white/60 rounded-lg px-3 py-1.5 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-red-400 text-xs">info</span>
+                        <span className="text-[10px] text-red-600 font-medium">
+                          Distancia al centro: {distanciaKm.toFixed(1)} km
+                          (máx. {JULIACA_RADIO_KM} km)
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
           {/* Severity selector */}
           <div className={scanning ? 'opacity-40 pointer-events-none' : ''}>
             <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
@@ -333,19 +489,6 @@ export default function PreviewPage() {
             </div>
           </div>
 
-          {/* Zone selector */}
-          <div className={scanning ? 'opacity-40 pointer-events-none' : ''}>
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-sm">location_on</span>
-              Zona
-            </label>
-            <select value={zone} onChange={e => setZone(e.target.value)}
-              className="w-full p-4 rounded-xl border-2 border-gray-200 focus:border-emerald-400 bg-white text-gray-900 font-medium transition-all shadow-sm"
-            >
-              {ZONES.map(z => <option key={z} value={z}>{z}</option>)}
-            </select>
-          </div>
-
           {/* Comment */}
           <div className={scanning ? 'opacity-40 pointer-events-none' : ''}>
             <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
@@ -359,8 +502,12 @@ export default function PreviewPage() {
 
           {/* Actions */}
           <div className="space-y-3 pt-2">
-            <button onClick={handleSubmit} disabled={sending || scanning}
-              className="w-full py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-emerald-600/30 hover:shadow-emerald-500/40 active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:shadow-none flex items-center justify-center gap-2"
+            <button onClick={handleSubmit} disabled={sending || scanning || buscandoDir || fueradeJuliaca}
+              className={`w-full py-4 rounded-2xl font-bold text-base shadow-lg active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:shadow-none flex items-center justify-center gap-2 ${
+                fueradeJuliaca
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                  : 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white shadow-emerald-600/30 hover:shadow-emerald-500/40'
+              }`}
             >
               {sending ? (
                 <span className="flex items-center gap-2">
@@ -371,6 +518,11 @@ export default function PreviewPage() {
                 <span className="flex items-center gap-2">
                   <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Analizando...
+                </span>
+              ) : fueradeJuliaca ? (
+                <span className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base">block</span>
+                  Fuera de Juliaca
                 </span>
               ) : (
                 <><span className="material-symbols-outlined">send</span> Enviar Reporte</>

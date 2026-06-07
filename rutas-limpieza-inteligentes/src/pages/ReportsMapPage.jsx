@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import { useReportes } from '../store/reportStore'
@@ -33,6 +34,7 @@ const LEVEL_COLORS = {
 }
 
 export default function ReportsMapPage() {
+  const navigate = useNavigate()
   const { reports } = useReportes()
   const [selectedId, setSelectedId] = useState(null)
   const [mapKey, setMapKey] = useState(0)
@@ -48,17 +50,20 @@ export default function ReportsMapPage() {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header compacto */}
-      <header className="relative z-50 flex items-center justify-between px-4 h-14 bg-white/80 backdrop-blur-xl border-b border-gray-200">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-sm">
+      <header className="relative z-50 flex items-center gap-2 px-4 h-14 bg-white/80 backdrop-blur-xl border-b border-gray-200">
+        <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-all shrink-0">
+          <span className="material-symbols-outlined text-gray-500 text-sm">arrow_back</span>
+        </button>
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-sm shrink-0">
             <span className="material-symbols-outlined text-white text-sm">map</span>
           </div>
-          <div>
-            <h1 className="font-bold text-gray-900 text-sm leading-tight">Mapa</h1>
+          <div className="min-w-0">
+            <h1 className="font-bold text-gray-900 text-sm leading-tight truncate">Mapa de Reportes</h1>
             <p className="text-[9px] text-gray-400 font-medium">{reports.length} reportes</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="text-[10px] font-bold bg-red-50 text-red-600 px-2.5 py-1 rounded-lg border border-red-200">
             {reports.filter(r => r.nivel === 'Crítico').length} críticos
           </span>

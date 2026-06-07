@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom'
 
 const SIDEBAR_ITEMS = [
-  { to: '/admin', icon: 'dashboard', label: 'Dashboard' },
-  { to: '/admin/mapa', icon: 'map', label: 'Alert Maps' },
-  { to: '/admin/personal', icon: 'group', label: 'Personnel' },
-  { to: '/admin/ajustes', icon: 'settings', label: 'Settings' },
+  { to: '/admin', icon: 'dashboard', label: 'Panel' },
+  { to: '/admin/mapa', icon: 'map', label: 'Mapa' },
+  { to: '/admin/personal', icon: 'group', label: 'Personal' },
+  { to: '/admin/ajustes', icon: 'settings', label: 'Ajustes' },
 ]
 
 export default function Sidebar({ open, onClose }) {
@@ -17,41 +17,53 @@ export default function Sidebar({ open, onClose }) {
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-[60] flex flex-col p-4 bg-white dark:bg-gray-800 h-full w-80 rounded-r-xl border-r border-gray-200 shadow-lg transform transition-all duration-300 ease-out ${
+        className={`fixed inset-y-0 left-0 z-[60] flex flex-col bg-white h-full w-80 shadow-xl border-r border-gray-200 transform transition-all duration-300 ease-out ${
           open ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
       >
-        <div className="flex items-center gap-4 mb-10 px-4">
-          <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 ring-2 ring-emerald-500">
-            <span className="material-symbols-outlined text-2xl">account_circle</span>
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-6 pt-8 pb-6 border-b border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-md">
+            <span className="material-symbols-outlined text-white text-lg">delete</span>
           </div>
           <div>
-            <h2 className="text-xl font-bold text-blue-600 leading-tight">Admin Panel</h2>
-            <p className="text-gray-500 text-sm font-semibold">Operational View</p>
+            <h2 className="text-lg font-bold text-[#1A1D1F] leading-tight">Juliaca LimpIA</h2>
+            <p className="text-[11px] text-[#6F767E] font-medium">Gestión Ambiental</p>
           </div>
         </div>
-        <nav className="flex-1 space-y-2">
+
+        {/* Nav */}
+        <nav className="flex-1 space-y-1 px-4 pt-6">
           {SIDEBAR_ITEMS.map(item => (
             <NavLink
               key={item.to}
               to={item.to}
               onClick={onClose}
               className={({ isActive }) =>
-                `flex items-center gap-4 px-4 py-3 rounded-r-full transition-all duration-300 ease-out ${
+                `flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all duration-200 ${
                   isActive
-                    ? 'bg-blue-100 text-blue-700 font-bold'
-                    : 'text-gray-500 hover:bg-gray-100'
+                    ? 'bg-[#135C3A] text-white font-bold shadow-md shadow-emerald-600/20'
+                    : 'text-[#6F767E] hover:bg-gray-50 hover:text-[#1A1D1F]'
                 }`
               }
             >
-              <span className="material-symbols-outlined">{item.icon}</span>
-              <span className="text-sm font-medium">{item.label}</span>
+              <span className="material-symbols-outlined text-lg">{item.icon}</span>
+              <span className="text-sm font-semibold">{item.label}</span>
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto p-4 bg-gray-50 rounded-xl">
-          <p className="text-sm font-bold text-emerald-600">JulIAca Limp-IA</p>
-          <p className="text-xs text-gray-500 mt-1 italic">Gestión Ambiental con IA</p>
+
+        {/* Footer */}
+        <div className="mx-4 mb-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+              <span className="material-symbols-outlined text-emerald-600 text-sm">eco</span>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-[#1A1D1F]">JulIAca Limp-IA v2.0</p>
+              <p className="text-[10px] text-[#6F767E]">YOLO-World + React</p>
+            </div>
+          </div>
         </div>
       </aside>
     </>

@@ -7,11 +7,11 @@ export default function AdminLayout() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
+    <div className="h-screen bg-gray-50 text-gray-900 font-sans overflow-hidden flex">
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <main className="lg:ml-80 transition-all duration-300 min-h-screen pb-24 md:pb-0">
-        <header className="sticky top-0 w-full z-40 bg-white/80 backdrop-blur-md px-4 h-12 flex justify-between items-center border-b border-gray-200">
+      <main className="flex-1 lg:ml-80 flex flex-col min-w-0">
+        <header className="shrink-0 w-full z-40 bg-white/80 backdrop-blur-md px-4 h-12 flex justify-between items-center border-b border-gray-200">
           <div className="flex items-center gap-2">
             <button
               className="lg:hidden p-2 hover:bg-gray-100 rounded-full transition-colors active:scale-95"
@@ -40,7 +40,9 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <Outlet />
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <Outlet />
+        </div>
       </main>
     </div>
   )
