@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom'
+import { useReportes } from '../store/reportStore'
 
 export default function HomePage() {
   const navigate = useNavigate()
-
-  const stats = { activos: 12, limpiosHoy: 482 }
+  const { reports } = useReportes()
+  const activos = reports.filter(r => r.estado !== 'Resuelto').length
+  const resueltos = reports.filter(r => r.estado === 'Resuelto').length
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -39,9 +41,7 @@ export default function HomePage() {
         <div className="z-10 flex flex-col items-center text-center">
           <div className="relative mb-8">
             <div className="absolute inset-0 bg-emerald-400/20 rounded-full animate-ping" />
-            <div className="absolute inset-0 bg-emerald-400/10 rounded-full" style={{
-              animation: 'pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-            }} />
+            <div className="absolute inset-0 bg-emerald-400/10 rounded-full report-pulse" />
             <button
               className="relative w-48 h-48 sm:w-56 sm:h-56 bg-emerald-600 text-white rounded-full flex flex-col items-center justify-center gap-4 shadow-xl hover:bg-emerald-700 transition-all active:scale-90 duration-200 group"
               onClick={() => navigate('/ciudadano/camara')}
@@ -62,14 +62,23 @@ export default function HomePage() {
 
         <div className="z-10 mt-8 grid grid-cols-2 gap-4 w-full max-w-sm">
           <div className="bg-white/80 backdrop-blur-md p-4 rounded-xl border border-gray-200/50 flex flex-col items-center justify-center shadow-sm">
-            <span className="text-amber-600 text-2xl font-bold">{stats.activos}</span>
+            <span className="text-amber-600 text-2xl font-bold">{activos}</span>
             <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">Activos</span>
           </div>
           <div className="bg-white/80 backdrop-blur-md p-4 rounded-xl border border-gray-200/50 flex flex-col items-center justify-center shadow-sm">
-            <span className="text-emerald-600 text-2xl font-bold">{stats.limpiosHoy}</span>
+            <span className="text-emerald-600 text-2xl font-bold">{resueltos}</span>
             <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">Limpios hoy</span>
           </div>
         </div>
+
+        {/* Map link */}
+        <button
+          onClick={() => navigate('/ciudadano/mapa')}
+          className="z-10 mt-6 px-6 py-3 bg-white border border-gray-200 rounded-xl shadow-sm flex items-center gap-2 text-sm font-semibold text-gray-600 hover:shadow-md transition-all"
+        >
+          <span className="material-symbols-outlined text-emerald-600">map</span>
+          Ver mis reportes en el mapa
+        </button>
       </main>
     </div>
   )
