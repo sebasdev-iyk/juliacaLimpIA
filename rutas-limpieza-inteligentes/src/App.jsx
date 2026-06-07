@@ -9,7 +9,6 @@ import ReportsMapPage from './pages/ReportsMapPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminDashboard from './pages/AdminDashboard'
 import AdminMapPage from './pages/AdminMapPage'
-import HeatmapPage from './pages/HeatmapPage'
 import CitizenLayout from './layouts/CitizenLayout'
 import AdminLayout from './layouts/AdminLayout'
 
@@ -35,7 +34,6 @@ export default function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="mapa" element={<AdminMapPage />} />
-            <Route path="calor" element={<HeatmapPage />} />
             <Route path="personal" element={
               <div className="p-10 text-center">
                 <div className="material-symbols-outlined text-6xl text-gray-300 mb-4">group</div>
