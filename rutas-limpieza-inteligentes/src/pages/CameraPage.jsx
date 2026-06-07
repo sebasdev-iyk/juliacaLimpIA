@@ -4,75 +4,99 @@ import { useNavigate } from 'react-router-dom'
 export default function CameraPage() {
   const navigate = useNavigate()
   const [angle, setAngle] = useState(0)
+  const [flash, setFlash] = useState(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setAngle((Math.sin(Date.now() / 1000) * 2) + (Math.random() - 0.5) * 0.5)
+      setAngle((Math.sin(Date.now() / 800) * 3) + (Math.random() - 0.5) * 0.3)
     }, 50)
     return () => clearInterval(interval)
   }, [])
 
   const capture = () => {
-    const el = document.getElementById('camera-screen')
-    if (el) el.classList.add('brightness-150')
+    setFlash(true)
     setTimeout(() => {
-      if (el) el.classList.remove('brightness-150')
+      setFlash(false)
       navigate('/ciudadano/preview')
-    }, 200)
+    }, 350)
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col" id="camera-screen">
-      <header className="h-16 flex items-center justify-between px-4 z-10 bg-gradient-to-b from-black/60 to-transparent">
-        <button className="w-12 h-12 flex items-center justify-center text-white" onClick={() => navigate(-1)}>
+    <div className="fixed inset-0 z-50 bg-black" id="camera-screen">
+      {/* Flash */}
+      {flash && (
+        <div className="absolute inset-0 bg-white z-50 animate-fade-in pointer-events-none" />
+      )}
+
+      {/* Top bar */}
+      <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-5 h-16 bg-gradient-to-b from-black/70 to-transparent">
+        <button className="w-11 h-11 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/20 active:scale-90 transition-all" onClick={() => navigate(-1)}>
           <span className="material-symbols-outlined">close</span>
         </button>
-        <div className="flex gap-4">
-          <button className="w-12 h-12 flex items-center justify-center text-white opacity-60 hover:opacity-100">
-            <span className="material-symbols-outlined">flash_off</span>
-          </button>
-          <button className="w-12 h-12 flex items-center justify-center text-white opacity-60 hover:opacity-100">
-            <span className="material-symbols-outlined">hdr_on</span>
-          </button>
+        <div className="flex gap-3">
+          {['flash_off', 'hdr_on'].map(icon => (
+            <button key={icon} className="w-11 h-11 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all">
+              <span className="material-symbols-outlined">{icon}</span>
+            </button>
+          ))}
         </div>
-        <div className="w-12" />
+        <div className="w-11" />
       </header>
 
-      <main className="relative flex-1 overflow-hidden">
-        <div className="absolute inset-0 bg-neutral-900">
-          <div className="w-full h-full bg-gradient-to-br from-neutral-800 to-neutral-950 opacity-80" />
-        </div>
-        <div className="absolute inset-0" style={{
-          backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.2) 1px, transparent 1px)',
-          backgroundSize: '33.33% 33.33%',
-          pointerEvents: 'none',
-        }} />
+      {/* Viewfinder */}
+      <main className="flex-1 h-full relative">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900" />
+        <div className="absolute inset-0 camera-grid" />
+
+        {/* Corner guides */}
+        {[
+          'top-4 left-4 border-t-2 border-l-2',
+          'top-4 right-4 border-t-2 border-r-2',
+          'bottom-32 left-4 border-b-2 border-l-2',
+          'bottom-32 right-4 border-b-2 border-r-2',
+        ].map((pos, i) => (
+          <div key={i} className={`absolute w-8 h-8 border-emerald-400/60 ${pos}`} />
+        ))}
+
+        {/* Leveler */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-48 h-[2px] bg-white/30 relative flex items-center justify-center">
-            <div className="w-32 h-[2px] bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" style={{ transform: `rotate(${angle}deg)` }} />
+          <div className="relative">
+            <div className="w-56 h-[2px] bg-white/20" />
+            <div
+              className="absolute top-0 left-1/2 h-[2px] bg-emerald-400 shadow-lg shadow-emerald-500/50"
+              style={{
+                width: '120px',
+                transform: `translateX(-50%) rotate(${angle}deg)`,
+                transition: 'transform 0.1s ease-out',
+              }}
+            />
           </div>
         </div>
-        <div className="absolute bottom-12 left-0 right-0 flex justify-center">
-          <span className="bg-black/40 backdrop-blur-md text-white px-4 py-1.5 rounded-full text-sm font-semibold border border-white/10">
+
+        {/* Instruction */}
+        <div className="absolute bottom-40 left-0 right-0 flex justify-center">
+          <span className="bg-black/40 backdrop-blur-xl text-white/90 px-5 py-2 rounded-2xl text-sm font-medium border border-white/10">
             Alinea el reporte con la cuadrícula
           </span>
         </div>
       </main>
 
-      <footer className="h-44 bg-black flex flex-col items-center justify-center px-4 gap-8">
-        <div className="flex items-center justify-between w-full max-w-sm">
-          <div className="w-12 h-12 rounded-lg border-2 border-white/20 overflow-hidden bg-neutral-800 flex items-center justify-center">
-            <span className="material-symbols-outlined text-white/30">photo</span>
-          </div>
+      {/* Bottom controls */}
+      <footer className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 to-transparent pt-16 pb-8">
+        <div className="flex items-center justify-center gap-8">
+          <button className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white/50 hover:bg-white/20 transition-all">
+            <span className="material-symbols-outlined text-2xl">flip_camera_ios</span>
+          </button>
+
           <button
-            className="w-20 h-20 rounded-full border-[6px] border-white/30 p-1 bg-transparent hover:border-emerald-500/50 transition-colors active:scale-90"
             onClick={capture}
+            className="relative w-20 h-20 rounded-full bg-white/10 p-1 hover:scale-105 active:scale-95 transition-all"
           >
-            <div className="w-full h-full bg-white rounded-full" />
+            <div className="w-full h-full rounded-full bg-white shadow-xl" />
+            <div className="absolute inset-1 rounded-full border-2 border-white/30" />
           </button>
-          <button className="w-12 h-12 flex items-center justify-center text-white bg-white/10 rounded-full">
-            <span className="material-symbols-outlined">flip_camera_ios</span>
-          </button>
+
+          <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md" />
         </div>
       </footer>
     </div>
