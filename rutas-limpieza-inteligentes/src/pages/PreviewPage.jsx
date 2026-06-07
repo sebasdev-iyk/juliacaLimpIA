@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useReportes } from '../store/reportStore'
+import { analyzeImage } from '../services/aiAnalyzer'
 
 const ZONES = [
   'Plaza de Armas', 'Mercado Santa Bárbara', 'Terminal Terrestre',
@@ -30,20 +31,6 @@ const NIVELES = [
   { key: 'Crítico', color: 'border-red-500 bg-red-50 text-red-700', dot: 'bg-red-500' },
 ]
 
-const DETECCIONES_SIMULADAS = [
-  { clase: 'bolsas de basura', confianza: 0.87, bbox: [120, 80, 340, 260] },
-  { clase: 'residuos dispersos', confianza: 0.72, bbox: [280, 200, 420, 340] },
-  { clase: 'plásticos', confianza: 0.65, bbox: [60, 300, 190, 400] },
-  { clase: 'desperdicios', confianza: 0.58, bbox: [350, 50, 480, 170] },
-]
-
-const OBJETOS = [
-  { label: 'Bolsas de basura', confianza: 87, icon: 'delete', color: 'from-amber-400 to-orange-500' },
-  { label: 'Residuos dispersos', confianza: 72, icon: 'splitscreen', color: 'from-yellow-400 to-amber-500' },
-  { label: 'Plásticos', confianza: 65, icon: 'local_drink', color: 'from-blue-400 to-blue-500' },
-  { label: 'Desperdicios', confianza: 58, icon: 'report', color: 'from-gray-400 to-gray-500' },
-]
-
 export default function PreviewPage() {
   const navigate = useNavigate()
   const { addReport } = useReportes()
@@ -56,8 +43,7 @@ export default function PreviewPage() {
   const [scanProgress, setScanProgress] = useState(0)
   const [result, setResult] = useState(null)
   const [showResults, setShowResults] = useState(false)
-  const [visibleObjects, setVisibleObjects] = useState([])
-  const scanRef = useRef(null)
+  const [aiError, setAiError] = useState(null)
 
   useEffect(() => {
     if (!foto) navigate('/ciudadano/camara', { replace: true })
@@ -71,26 +57,44 @@ export default function PreviewPage() {
       if (progress >= 100) {
         progress = 100
         clearInterval(interval)
-        setScanProgress(100)
-        setTimeout(() => {
-          setScanning(false)
-          setResult({
-            nivel: nivel,
-            confianza: nivel === 'Crítico' ? '92%' : nivel === 'Medio' ? '87%' : '78%',
-            prioridad: nivel === 'Crítico' ? 'Alta' : nivel === 'Medio' ? 'Media' : 'Baja',
-            objetos: OBJETOS,
-            resumen: `Se detectaron ${OBJETOS.length} tipos de residuos en la zona`,
-          })
-          setShowResults(true)
-          OBJETOS.forEach((obj, i) => {
-            setTimeout(() => {
-              setVisibleObjects(prev => [...prev, obj])
-            }, i * 250)
-          })
-        }, 400)
       }
       setScanProgress(Math.min(progress, 100))
     }, 80)
+
+    const runAnalysis = async () => {
+      const blob = await (await fetch(foto)).blob()
+      const file = new File([blob], 'captura.jpg', { type: 'image/jpeg' })
+      try {
+        const analysis = await analyzeImage(file, null)
+        setResult(analysis)
+        setNivel(analysis.nivel)
+        if (analysis.fallback_simulado) {
+          setAiError('Servidor AI no disponible — resultado simulado. Para análisis real, inicia el servicio YOLO-World.')
+        }
+      } catch (err) {
+        console.error('Error en análisis IA:', err)
+        setAiError('Error al analizar la imagen')
+        setResult({
+          basura_detectada: true,
+          nivel: 'Medio',
+          confianza: '0%',
+          prioridad: 'Media',
+          resumen: 'Error de análisis — usa selección manual',
+          metodo: 'Error',
+          es_real: false,
+          objetos: [],
+        })
+      } finally {
+        clearInterval(interval)
+        setScanProgress(100)
+        setTimeout(() => {
+          setScanning(false)
+          setShowResults(true)
+        }, 400)
+      }
+    }
+
+    runAnalysis()
     return () => clearInterval(interval)
   }, [foto])
 
@@ -98,13 +102,18 @@ export default function PreviewPage() {
     setSending(true)
     const coords = ZONE_COORDS[zone] || { lat: -15.4911, lng: -70.1331 }
     const now = new Date()
+    let ubicacion = null
+    try {
+      const raw = sessionStorage.getItem('current_ubicacion')
+      if (raw) ubicacion = JSON.parse(raw)
+    } catch {}
 
     const report = {
       id: Date.now(),
       zona: zone,
       descripcion: comment || 'Reporte ciudadano',
-      latitud: coords.lat + (Math.random() - 0.5) * 0.004,
-      longitud: coords.lng + (Math.random() - 0.5) * 0.004,
+      latitud: ubicacion ? parseFloat(ubicacion.lat) + (Math.random() - 0.5) * 0.002 : coords.lat + (Math.random() - 0.5) * 0.004,
+      longitud: ubicacion ? parseFloat(ubicacion.lng) + (Math.random() - 0.5) * 0.002 : coords.lng + (Math.random() - 0.5) * 0.004,
       nivel: nivel,
       confianza: result?.confianza || '0%',
       prioridad: result?.prioridad || 'Media',
@@ -113,11 +122,26 @@ export default function PreviewPage() {
       comentario: comment,
       foto: foto,
       objetos: result?.objetos || [],
+      metodo_ia: result?.metodo || 'Ninguno',
+      es_real: result?.es_real || false,
     }
 
     addReport(report)
     sessionStorage.removeItem('current_foto')
+    sessionStorage.removeItem('current_ubicacion')
     setTimeout(() => navigate('/ciudadano/mapa', { replace: true }), 400)
+  }
+
+  const getLevelColor = (lvl) => {
+    if (lvl === 'Crítico') return 'bg-red-50 text-red-600 border-red-200'
+    if (lvl === 'Medio') return 'bg-amber-50 text-amber-600 border-amber-200'
+    return 'bg-emerald-50 text-emerald-600 border-emerald-200'
+  }
+
+  const getLevelBar = (lvl) => {
+    if (lvl === 'Crítico') return 'from-red-500 to-red-600'
+    if (lvl === 'Medio') return 'from-amber-500 to-amber-600'
+    return 'from-emerald-500 to-emerald-600'
   }
 
   return (
@@ -131,7 +155,7 @@ export default function PreviewPage() {
             </div>
             <div>
               <span className="font-bold text-gray-900 text-sm">Confirmar Reporte</span>
-              {scanning && <p className="text-[10px] text-emerald-500 font-semibold">Escaneando con IA...</p>}
+              {scanning && <p className="text-[10px] text-emerald-500 font-semibold">Analizando con IA...</p>}
             </div>
           </div>
           <button onClick={() => navigate('/ciudadano')} className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-all">
@@ -141,13 +165,11 @@ export default function PreviewPage() {
 
         <div className="px-5 pt-5 space-y-4 max-w-lg mx-auto">
           {/* Photo card con escaneo */}
-          <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-[4/3] bg-gray-900 group">
+          <div className="relative rounded-2xl overflow-hidden shadow-xl aspect-[4/3] bg-gray-900">
             <img src={foto} alt="Captura" className="w-full h-full object-cover" />
 
-            {/* Overlay escaneo */}
             {scanning && (
               <div className="absolute inset-0">
-                {/* Grid scan effect */}
                 <div className="absolute inset-0" style={{
                   backgroundImage: `
                     linear-gradient(rgba(16,185,129,0.08) 1px, transparent 1px),
@@ -155,9 +177,7 @@ export default function PreviewPage() {
                   `,
                   backgroundSize: '40px 40px',
                 }} />
-                {/* Scan line */}
                 <div
-                  ref={scanRef}
                   className="absolute left-0 right-0 h-1"
                   style={{
                     top: `${scanProgress}%`,
@@ -167,63 +187,49 @@ export default function PreviewPage() {
                     transition: 'top 0.08s linear',
                   }}
                 />
-                {/* Corner brackets scanning */}
-                {[
-                  'top-4 left-4 border-t-2 border-l-2',
-                  'top-4 right-4 border-t-2 border-r-2',
-                  'bottom-4 left-4 border-b-2 border-l-2',
-                  'bottom-4 right-4 border-b-2 border-r-2',
-                ].map((pos, i) => (
+                {['top-4 left-4 border-t-2 border-l-2', 'top-4 right-4 border-t-2 border-r-2', 'bottom-4 left-4 border-b-2 border-l-2', 'bottom-4 right-4 border-b-2 border-r-2'].map((pos, i) => (
                   <div key={i} className={`absolute w-6 h-6 border-emerald-400/70 ${pos}`} />
                 ))}
-                {/* Center icon */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="bg-black/50 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/10 flex items-center gap-3">
                     <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-white font-semibold text-sm">Analizando imagen...</span>
+                    <span className="text-white font-semibold text-sm">Analizando con IA...</span>
                   </div>
                 </div>
-                {/* Progress bar */}
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-900/50">
-                  <div
-                    className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-200"
-                    style={{ width: `${scanProgress}%` }}
-                  />
+                  <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-200" style={{ width: `${scanProgress}%` }} />
                 </div>
-                {/* Badge */}
                 <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-emerald-400 border border-white/10 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  IA escaneando
+                  IA analizando
                 </div>
               </div>
             )}
 
-            {/* Resultados del escaneo sobre la foto */}
-            {showResults && (
+            {/* Resultados del análisis sobre la foto */}
+            {showResults && result?.objetos?.length > 0 && (
               <div className="absolute inset-0">
-                {/* Bounding boxes animados */}
-                {visibleObjects.map((obj, i) => {
-                  const bbox = DETECCIONES_SIMULADAS[i]
-                  if (!bbox) return null
+                {result.objetos.slice(0, 6).map((obj, i) => {
+                  if (!obj.bbox) return null
+                  const [x1, y1, x2, y2] = obj.bbox
+                  const w = 500, h = 375
+                  const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899']
+                  const color = colors[i % colors.length]
                   return (
                     <div
                       key={i}
                       className="absolute border-2 rounded-lg animate-fade-in"
                       style={{
-                        left: `${(bbox.bbox[0] / 500) * 100}%`,
-                        top: `${(bbox.bbox[1] / 450) * 100}%`,
-                        width: `${((bbox.bbox[2] - bbox.bbox[0]) / 500) * 100}%`,
-                        height: `${((bbox.bbox[3] - bbox.bbox[1]) / 450) * 100}%`,
-                        borderColor: i === 0 ? '#ef4444' : i === 1 ? '#f59e0b' : '#10b981',
-                        background: i === 0 ? 'rgba(239,68,68,0.1)' : i === 1 ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)',
+                        left: `${(x1 / w) * 100}%`,
+                        top: `${(y1 / h) * 100}%`,
+                        width: `${((x2 - x1) / w) * 100}%`,
+                        height: `${((y2 - y1) / h) * 100}%`,
+                        borderColor: color,
+                        background: `${color}18`,
                       }}
                     >
-                      <span className="absolute -top-5 left-0 text-[9px] font-bold px-1.5 py-0.5 rounded-t-md whitespace-nowrap"
-                        style={{
-                          background: i === 0 ? '#ef4444' : i === 1 ? '#f59e0b' : '#10b981',
-                          color: 'white',
-                        }}>
-                        {obj.label} {obj.confianza}%
+                      <span className="absolute -top-4.5 left-0 text-[8px] font-bold px-1 py-0.5 rounded-t-sm whitespace-nowrap text-white" style={{ background: color }}>
+                        {obj.clase} {(obj.confianza * 100).toFixed(0)}%
                       </span>
                     </div>
                   )
@@ -231,13 +237,12 @@ export default function PreviewPage() {
               </div>
             )}
 
-            {/* Bottom info */}
             <div className={`absolute bottom-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-xl border ${scanning ? 'bg-black/50 border-white/10' : 'bg-white/90 border-gray-200 shadow-sm'}`}>
               <span className={`material-symbols-outlined text-lg ${scanning ? 'text-emerald-400' : 'text-emerald-600'}`}>
                 {scanning ? 'radar' : 'check_circle'}
               </span>
               <span className={`text-xs font-semibold ${scanning ? 'text-white' : 'text-gray-700'}`}>
-                {scanning ? 'Escaneando...' : 'Análisis completo'}
+                {scanning ? 'Analizando...' : 'Análisis completo'}
               </span>
             </div>
           </div>
@@ -252,48 +257,65 @@ export default function PreviewPage() {
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-900 text-sm">Análisis con IA</h3>
-                    <p className="text-[10px] text-gray-400">YOLO-World · Detección inteligente</p>
+                    <p className="text-[10px] text-gray-400">{result.metodo || 'Detección'}</p>
                   </div>
                 </div>
-                <div className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
-                  nivel === 'Crítico' ? 'bg-red-50 text-red-600 border-red-200' :
-                  nivel === 'Medio' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                  'bg-emerald-50 text-emerald-600 border-emerald-200'
-                }`}>
-                  {result.confianza} confianza
+                <div className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${getLevelColor(result.nivel)}`}>
+                  {result.nivel} · {result.confianza}
+                </div>
+              </div>
+
+              {/* Advertencia si es simulado */}
+              {aiError && (
+                <div className="mx-4 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2">
+                  <span className="material-symbols-outlined text-amber-500 text-sm mt-0.5">warning</span>
+                  <p className="text-xs text-amber-700">{aiError}</p>
+                </div>
+              )}
+
+              {/* Métricas */}
+              <div className="p-4 grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50">
+                  <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Basura</p>
+                  <p className="text-base font-bold text-emerald-700">{result.basura_detectada ? 'Detectada' : 'No detectada'}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100/50">
+                  <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Prioridad</p>
+                  <p className="text-base font-bold text-blue-700">{result.prioridad}</p>
                 </div>
               </div>
 
               {/* Objetos detectados */}
-              <div className="p-4 space-y-2">
-                {visibleObjects.map((obj, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 animate-slide-up"
-                    style={{ animationDelay: `${i * 0.1}s` }}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${obj.color} flex items-center justify-center`}>
-                        <span className="material-symbols-outlined text-white text-sm">{obj.icon}</span>
+              {result.objetos?.length > 0 && (
+                <div className="px-4 pb-4 space-y-1.5">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                    Objetos detectados ({result.objetos.length})
+                  </p>
+                  {result.objetos.slice(0, 8).map((obj, i) => {
+                    const colors = ['from-amber-400 to-orange-500', 'from-yellow-400 to-amber-500', 'from-blue-400 to-blue-500', 'from-gray-400 to-gray-500', 'from-purple-400 to-purple-500', 'from-rose-400 to-rose-500']
+                    return (
+                      <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 animate-slide-up" style={{ animationDelay: `${i * 0.08}s` }}>
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${colors[i % colors.length]} flex items-center justify-center`}>
+                            <span className="material-symbols-outlined text-white text-xs">delete</span>
+                          </div>
+                          <span className="text-sm font-semibold text-gray-800">{obj.clase}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-14 h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                            <div className={`h-full rounded-full bg-gradient-to-r ${colors[i % colors.length]} transition-all duration-1000`} style={{ width: `${(obj.confianza * 100).toFixed(0)}%` }} />
+                          </div>
+                          <span className="text-xs font-bold text-gray-500 w-8 text-right">{(obj.confianza * 100).toFixed(0)}%</span>
+                        </div>
                       </div>
-                      <span className="text-sm font-semibold text-gray-800">{obj.label}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 rounded-full bg-gray-200 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full bg-gradient-to-r ${obj.color} transition-all duration-1000`}
-                          style={{ width: `${obj.confianza}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-bold text-gray-500 w-8 text-right">{obj.confianza}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Severity selector - disabled durante escaneo */}
+          {/* Severity selector */}
           <div className={scanning ? 'opacity-40 pointer-events-none' : ''}>
             <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
               <span className="material-symbols-outlined text-sm">warning</span>
@@ -302,12 +324,8 @@ export default function PreviewPage() {
             </label>
             <div className="grid grid-cols-3 gap-2">
               {NIVELES.map(n => (
-                <button
-                  key={n.key}
-                  onClick={() => setNivel(n.key)}
-                  className={`py-3.5 rounded-xl font-bold text-sm border-2 transition-all duration-200 ${
-                    nivel === n.key ? `${n.color} shadow-md scale-[1.02]` : 'border-gray-200 bg-white text-gray-400 hover:border-gray-300'
-                  }`}
+                <button key={n.key} onClick={() => setNivel(n.key)}
+                  className={`py-3.5 rounded-xl font-bold text-sm border-2 transition-all duration-200 ${nivel === n.key ? `${n.color} shadow-md scale-[1.02]` : 'border-gray-200 bg-white text-gray-400 hover:border-gray-300'}`}
                 >
                   {n.key}
                 </button>
@@ -321,9 +339,7 @@ export default function PreviewPage() {
               <span className="material-symbols-outlined text-sm">location_on</span>
               Zona
             </label>
-            <select
-              value={zone}
-              onChange={e => setZone(e.target.value)}
+            <select value={zone} onChange={e => setZone(e.target.value)}
               className="w-full p-4 rounded-xl border-2 border-gray-200 focus:border-emerald-400 bg-white text-gray-900 font-medium transition-all shadow-sm"
             >
               {ZONES.map(z => <option key={z} value={z}>{z}</option>)}
@@ -336,20 +352,14 @@ export default function PreviewPage() {
               <span className="material-symbols-outlined text-sm">edit</span>
               Comentario
             </label>
-            <textarea
-              className="w-full p-4 rounded-xl border-2 border-gray-200 focus:border-emerald-400 bg-white text-gray-900 transition-all resize-none h-20 shadow-sm"
-              maxLength={100}
-              value={comment}
-              onChange={e => setComment(e.target.value)}
-              placeholder="Describe el problema..."
+            <textarea className="w-full p-4 rounded-xl border-2 border-gray-200 focus:border-emerald-400 bg-white text-gray-900 transition-all resize-none h-20 shadow-sm"
+              maxLength={100} value={comment} onChange={e => setComment(e.target.value)} placeholder="Describe el problema..."
             />
           </div>
 
           {/* Actions */}
           <div className="space-y-3 pt-2">
-            <button
-              onClick={handleSubmit}
-              disabled={sending || scanning}
+            <button onClick={handleSubmit} disabled={sending || scanning}
               className="w-full py-4 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white rounded-2xl font-bold text-base shadow-lg shadow-emerald-600/30 hover:shadow-emerald-500/40 active:scale-[0.98] transition-all disabled:opacity-50 disabled:hover:shadow-none flex items-center justify-center gap-2"
             >
               {sending ? (
@@ -360,24 +370,16 @@ export default function PreviewPage() {
               ) : scanning ? (
                 <span className="flex items-center gap-2">
                   <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Escaneando...
+                  Analizando...
                 </span>
               ) : (
-                <>
-                  <span className="material-symbols-outlined">send</span>
-                  Enviar Reporte
-                </>
+                <><span className="material-symbols-outlined">send</span> Enviar Reporte</>
               )}
             </button>
-            <button
-              onClick={() => {
-                sessionStorage.removeItem('current_foto')
-                navigate('/ciudadano/camara')
-              }}
+            <button onClick={() => { sessionStorage.removeItem('current_foto'); sessionStorage.removeItem('current_ubicacion'); navigate('/ciudadano/camara') }}
               className="w-full py-4 bg-white border-2 border-gray-200 text-gray-600 rounded-2xl font-bold text-base hover:border-gray-300 hover:shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined">refresh</span>
-              Retomar foto
+              <span className="material-symbols-outlined">refresh</span> Retomar foto
             </button>
           </div>
         </div>
