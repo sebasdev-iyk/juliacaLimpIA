@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { INITIAL_REPORTS } from '../data/mockReports'
 
 const STORAGE_KEY = 'juliaca_reports'
 const ReportsContext = createContext(null)
@@ -17,8 +16,8 @@ function loadReports() {
   } catch (e) {
     log('error al cargar del localStorage', e)
   }
-  log('sembrando datos iniciales', { cantidad: INITIAL_REPORTS.length })
-  return INITIAL_REPORTS
+  log('no hay datos en localStorage — empezando vacío')
+  return []
 }
 
 export function ReportsProvider({ children }) {
@@ -41,8 +40,13 @@ export function ReportsProvider({ children }) {
     setReports(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r))
   }, [])
 
+  const resetReports = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY)
+    setReports([])
+  }, [])
+
   return (
-    <ReportsContext.Provider value={{ reports, addReport, setReports, updateReport }}>
+    <ReportsContext.Provider value={{ reports, addReport, setReports, updateReport, resetReports }}>
       {children}
     </ReportsContext.Provider>
   )

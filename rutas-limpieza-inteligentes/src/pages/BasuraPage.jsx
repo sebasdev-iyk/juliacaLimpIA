@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import MapView from '../components/MapView'
 import StatsCards from '../components/StatsCards'
 import RoutePanel from '../components/RoutePanel'
@@ -9,10 +10,11 @@ import { fetchRouteFromOSRM, simulateRoadRoute } from '../utils/osrmRouter'
 import { analyzeImage } from '../services/aiAnalyzer'
 import BboxOverlay from '../components/BboxOverlay'
 import ReportList from '../components/ReportList'
-import { Truck, X, Brain, Image as ImageIcon, Sparkles, List, Map as MapIcon } from 'lucide-react'
+import { Truck, X, Brain, Image as ImageIcon, Sparkles, List, Map as MapIcon, RotateCcw } from 'lucide-react'
 
 export default function BasuraPage() {
-  const { reports, updateReport } = useReports()
+  const { reports, updateReport, resetReports } = useReports()
+  const navigate = useNavigate()
   const log = (msg, data) => console.log(`[${new Date().toLocaleTimeString()}] BasuraPage: ${msg}`, data ?? '')
   log('render', { reportsCount: reports.length })
   log('localStorage raw', localStorage.getItem('juliaca_reports')?.slice(0, 300))
@@ -414,6 +416,17 @@ export default function BasuraPage() {
             >
               <Truck size={20} />
               <span>Ruta</span>
+            </button>
+            <button
+              className="bottom-bar-btn btn-reset"
+              onClick={() => {
+                resetReports()
+                navigate('/user')
+              }}
+              style={{ color: 'var(--color-danger)' }}
+            >
+              <RotateCcw size={20} />
+              <span>Reiniciar</span>
             </button>
           </>
         )}
